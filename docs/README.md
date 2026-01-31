@@ -8,6 +8,8 @@ This directory contains comprehensive documentation for the ConsensusBot project
 docs/
 ├── adr/                  # Architecture Decision Records
 ├── templates/            # Documentation templates
+├── DOCKER.md            # Docker deployment guide
+├── LOCAL_SETUP.md       # Local development setup guide
 └── README.md            # This file
 ```
 
@@ -75,6 +77,8 @@ const app = new App({
 
 - [README.md](../README.md) - Project overview and setup
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
+- [LOCAL_SETUP.md](LOCAL_SETUP.md) - Detailed local setup instructions
+- [DOCKER.md](DOCKER.md) - Docker deployment guide
 - [Slack Bolt Documentation](https://slack.dev/bolt-js/)
 
 ## Questions?

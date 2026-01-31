@@ -70,7 +70,7 @@ app.message('hello', async ({ message, say }) => {
 /**
  * Slash Command - Example command handler
  */
-app.command('/consensus', async ({ command, ack, respond }) => {
+app.command('/consensus', async ({ ack, respond }) => {
   // Acknowledge command request
   await ack();
 
