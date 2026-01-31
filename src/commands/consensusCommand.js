@@ -8,6 +8,8 @@
 
 const logger = require('../utils/logger');
 const { createConsensusModal } = require('../modals/consensusModal');
+const db = require('../database/db');
+const { createVotingMessage } = require('../utils/votingMessage');
 
 /**
  * Register the /consensus command handler
@@ -147,11 +149,14 @@ const registerConsensusCommand = (app) => {
       await ack();
 
       logger.info('Opening consensus modal', {
-        userId: body.user.id
+        userId: body.user.id,
+        channelId: body.channel?.id
       });
 
-      // Open the modal
+      // Open the modal, passing channel ID in private_metadata
       const modalView = createConsensusModal(body.trigger_id);
+      modalView.view.private_metadata = body.channel?.id || '';
+      
       await client.views.open(modalView);
 
       logger.info('Consensus modal opened successfully', {
@@ -168,9 +173,9 @@ const registerConsensusCommand = (app) => {
   });
 
   /**
-   * Handle modal submission (placeholder for future database integration)
+   * Handle modal submission
    */
-  app.view('consensus_decision_modal', async ({ ack, body, view }) => {
+  app.view('consensus_decision_modal', async ({ ack, body, view, client }) => {
     try {
       // Acknowledge the view submission
       await ack();
@@ -183,25 +188,75 @@ const registerConsensusCommand = (app) => {
       const values = view.state.values;
       const decisionName = values.decision_name_block.decision_name_input.value;
       const requiredVoters = values.required_voters_block.required_voters_input.selected_users;
+      const proposal = values.proposal_block.proposal_input.value;
       const successCriteria = values.success_criteria_block.success_criteria_input.selected_option.value;
-      const description = values.description_block.description_input.value || '';
+      const deadline = values.deadline_block.deadline_input.selected_date;
 
       logger.info('Decision data collected', {
         decisionName,
         requiredVotersCount: requiredVoters.length,
         successCriteria,
+        deadline,
         userId: body.user.id
       });
 
-      // TODO: Save to database (placeholder for future implementation)
-      // For now, just log the submission
-      logger.info('Decision created (mock)', {
-        decisionName,
-        requiredVoters,
-        successCriteria,
-        description,
-        createdBy: body.user.id
+      // Get channel ID from the private metadata or use a default
+      // In Slack modals, we need to pass the channel ID through private_metadata
+      const channelId = view.private_metadata || body.user.id; // Fallback to DM if no channel
+
+      // Save decision to database
+      const decisionId = db.insertDecision({
+        name: decisionName,
+        proposal: proposal,
+        success_criteria: successCriteria,
+        deadline: deadline,
+        channel_id: channelId,
+        creator_id: body.user.id
       });
+
+      // Save voters to database
+      db.insertVoters(decisionId, requiredVoters);
+
+      // Get the full decision from database
+      const decision = db.getDecision(decisionId);
+
+      logger.info('Decision created successfully', {
+        decisionId,
+        name: decisionName
+      });
+
+      // Post voting message to channel
+      const votingMessage = createVotingMessage(decision, requiredVoters);
+      
+      try {
+        const result = await client.chat.postMessage({
+          channel: channelId,
+          ...votingMessage
+        });
+
+        // Update decision with message timestamp
+        db.updateDecisionMessage(decisionId, result.ts);
+
+        // Pin the message
+        await client.pins.add({
+          channel: channelId,
+          timestamp: result.ts
+        });
+
+        logger.info('Voting message posted and pinned', {
+          decisionId,
+          messageTs: result.ts,
+          channelId
+        });
+
+      } catch (postError) {
+        logger.error('Error posting voting message', {
+          error: postError.message,
+          decisionId
+        });
+        // Decision is saved, but message posting failed
+        // Could implement retry logic here
+      }
 
     } catch (error) {
       logger.error('Error processing modal submission', {
@@ -215,6 +270,132 @@ const registerConsensusCommand = (app) => {
   logger.info('Consensus command registered successfully');
 };
 
+/**
+ * Register voting action handlers
+ * @param {object} app - The Bolt app instance
+ */
+const registerVotingHandlers = (app) => {
+  // Handle Yes vote
+  app.action(/^vote_yes_(\d+)$/, async ({ ack, body, client, action }) => {
+    try {
+      await ack();
+      
+      const decisionId = parseInt(action.value);
+      const userId = body.user.id;
+      
+      logger.info('Vote cast', {
+        decisionId,
+        userId,
+        voteType: 'yes'
+      });
+      
+      // Save vote to database
+      db.upsertVote({
+        decision_id: decisionId,
+        user_id: userId,
+        vote_type: 'yes'
+      });
+      
+      // Get decision for confirmation message
+      const decision = db.getDecision(decisionId);
+      
+      // Send confirmation
+      await client.chat.postEphemeral({
+        channel: body.channel.id,
+        user: userId,
+        text: `✅ Your vote "Yes" has been recorded for: ${decision.name}`
+      });
+      
+    } catch (error) {
+      logger.error('Error handling yes vote', {
+        error: error.message,
+        stack: error.stack
+      });
+    }
+  });
+  
+  // Handle No vote
+  app.action(/^vote_no_(\d+)$/, async ({ ack, body, client, action }) => {
+    try {
+      await ack();
+      
+      const decisionId = parseInt(action.value);
+      const userId = body.user.id;
+      
+      logger.info('Vote cast', {
+        decisionId,
+        userId,
+        voteType: 'no'
+      });
+      
+      // Save vote to database
+      db.upsertVote({
+        decision_id: decisionId,
+        user_id: userId,
+        vote_type: 'no'
+      });
+      
+      // Get decision for confirmation message
+      const decision = db.getDecision(decisionId);
+      
+      // Send confirmation
+      await client.chat.postEphemeral({
+        channel: body.channel.id,
+        user: userId,
+        text: `❌ Your vote "No" has been recorded for: ${decision.name}`
+      });
+      
+    } catch (error) {
+      logger.error('Error handling no vote', {
+        error: error.message,
+        stack: error.stack
+      });
+    }
+  });
+  
+  // Handle Abstain vote
+  app.action(/^vote_abstain_(\d+)$/, async ({ ack, body, client, action }) => {
+    try {
+      await ack();
+      
+      const decisionId = parseInt(action.value);
+      const userId = body.user.id;
+      
+      logger.info('Vote cast', {
+        decisionId,
+        userId,
+        voteType: 'abstain'
+      });
+      
+      // Save vote to database
+      db.upsertVote({
+        decision_id: decisionId,
+        user_id: userId,
+        vote_type: 'abstain'
+      });
+      
+      // Get decision for confirmation message
+      const decision = db.getDecision(decisionId);
+      
+      // Send confirmation
+      await client.chat.postEphemeral({
+        channel: body.channel.id,
+        user: userId,
+        text: `⏸️ Your vote "Abstain" has been recorded for: ${decision.name}`
+      });
+      
+    } catch (error) {
+      logger.error('Error handling abstain vote', {
+        error: error.message,
+        stack: error.stack
+      });
+    }
+  });
+  
+  logger.info('Voting handlers registered successfully');
+};
+
 module.exports = {
-  registerConsensusCommand
+  registerConsensusCommand,
+  registerVotingHandlers
 };
