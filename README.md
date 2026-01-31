@@ -191,7 +191,7 @@ docker-compose down
 
 Infrastructure is managed using Terraform. See the `terraform/` directory for:
 
-- AWS resource definitions
+- Azure resource definitions
 - Environment configurations
 - State management setup
 

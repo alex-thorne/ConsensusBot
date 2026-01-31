@@ -1,9 +1,9 @@
 # Input variables for Terraform configuration
 
-variable "aws_region" {
-  description = "AWS region where resources will be created"
+variable "azure_region" {
+  description = "Azure region where resources will be created"
   type        = string
-  default     = "us-east-1"
+  default     = "eastus"
 }
 
 variable "environment" {
