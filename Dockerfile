@@ -4,12 +4,23 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
+# Install build dependencies required for native modules (better-sqlite3)
+# These packages are needed to compile better-sqlite3 during npm install
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++
+
 # Copy package files
 COPY package*.json ./
 
 # Install dependencies
 # Use npm ci for cleaner, faster, and more reliable installs in CI/CD
 RUN npm ci --only=production
+
+# Remove build dependencies to reduce image size
+# Note: better-sqlite3 binary is already compiled, so we can safely remove these
+RUN apk del python3 make g++
 
 # Copy application source code
 COPY src/ ./src/
