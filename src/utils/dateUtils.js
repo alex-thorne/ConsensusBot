@@ -11,7 +11,7 @@
  * @returns {Date} The calculated date
  */
 const addBusinessDays = (days, startDate = new Date()) => {
-  const result = new Date(startDate);
+  const result = new Date(startDate.getTime());
   let daysAdded = 0;
   
   while (daysAdded < days) {

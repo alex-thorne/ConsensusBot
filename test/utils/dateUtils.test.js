@@ -11,7 +11,8 @@ describe('Date Utilities', () => {
       const startDate = new Date('2026-02-02');
       const result = addBusinessDays(5, startDate);
       
-      // 5 business days from Monday should be next Monday (2026-02-09)
+      // 5 business days from Monday (M, T, W, Th, F) is the next Monday (2026-02-09)
+      // This includes the weekend, so it's 7 calendar days total
       expect(result.getDay()).not.toBe(0); // Not Sunday
       expect(result.getDay()).not.toBe(6); // Not Saturday
     });

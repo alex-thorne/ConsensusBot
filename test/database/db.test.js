@@ -73,7 +73,7 @@ describe('Database Module', () => {
       expect(retrieved.status).toBe('active');
     });
 
-    it('should return null for non-existent decision', () => {
+    it('should return undefined for non-existent decision', () => {
       const retrieved = db.getDecision(99999);
       expect(retrieved).toBeUndefined();
     });

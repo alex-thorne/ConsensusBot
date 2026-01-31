@@ -200,9 +200,16 @@ const registerConsensusCommand = (app) => {
         userId: body.user.id
       });
 
-      // Get channel ID from the private metadata or use a default
-      // In Slack modals, we need to pass the channel ID through private_metadata
-      const channelId = view.private_metadata || body.user.id; // Fallback to DM if no channel
+      // Get channel ID from the private metadata
+      // The channel ID is passed through from the button action
+      const channelId = view.private_metadata;
+      
+      if (!channelId) {
+        logger.error('No channel ID available in modal submission', {
+          userId: body.user.id
+        });
+        throw new Error('Channel ID not available');
+      }
 
       // Save decision to database
       const decisionId = db.insertDecision({
