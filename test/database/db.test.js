@@ -19,6 +19,7 @@ describe('Database Module', () => {
 
   beforeEach(() => {
     // Clean up test database before each test
+    db.closeDatabase(); // Close any existing connection
     if (fs.existsSync(TEST_DB_PATH)) {
       fs.unlinkSync(TEST_DB_PATH);
     }
@@ -277,6 +278,181 @@ describe('Database Module', () => {
       expect(voteTypes['U1111111111']).toBe('yes');
       expect(voteTypes['U2222222222']).toBe('no');
       expect(voteTypes['U3333333333']).toBe('abstain');
+    });
+  });
+
+  describe('Enhanced Query Operations', () => {
+    it('should get all open decisions', () => {
+      // Clean database state for this test
+      db.closeDatabase();
+      if (fs.existsSync(TEST_DB_PATH)) {
+        fs.unlinkSync(TEST_DB_PATH);
+      }
+      
+      const decision1 = {
+        name: 'Active Decision 1',
+        proposal: 'Test proposal',
+        success_criteria: 'simple_majority',
+        deadline: '2026-02-15',
+        channel_id: 'C1234567890',
+        creator_id: 'U1234567890'
+      };
+
+      const decision2 = {
+        name: 'Active Decision 2',
+        proposal: 'Test proposal',
+        success_criteria: 'unanimous',
+        deadline: '2026-02-20',
+        channel_id: 'C1234567890',
+        creator_id: 'U1234567890'
+      };
+
+      const id1 = db.insertDecision(decision1);
+      const id2 = db.insertDecision(decision2);
+
+      // Change one to approved
+      db.updateDecisionStatus(id2, 'approved');
+
+      const openDecisions = db.getOpenDecisions();
+
+      expect(openDecisions).toHaveLength(1);
+      expect(openDecisions[0].id).toBe(id1);
+      expect(openDecisions[0].status).toBe('active');
+    });
+
+    it('should get missing voters for a decision', () => {
+      const decision = {
+        name: 'Test Decision',
+        proposal: 'Test proposal',
+        success_criteria: 'simple_majority',
+        deadline: '2026-02-15',
+        channel_id: 'C1234567890',
+        creator_id: 'U1234567890'
+      };
+
+      const decisionId = db.insertDecision(decision);
+      const voterIds = ['U1111111111', 'U2222222222', 'U3333333333'];
+
+      db.insertVoters(decisionId, voterIds);
+
+      // Only one voter votes
+      db.upsertVote({
+        decision_id: decisionId,
+        user_id: 'U1111111111',
+        vote_type: 'yes'
+      });
+
+      const missingVoters = db.getMissingVoters(decisionId);
+
+      expect(missingVoters).toHaveLength(2);
+      
+      const missingUserIds = missingVoters.map(v => v.user_id);
+      expect(missingUserIds).toContain('U2222222222');
+      expect(missingUserIds).toContain('U3333333333');
+      expect(missingUserIds).not.toContain('U1111111111');
+    });
+
+    it('should get vote summary for a decision', () => {
+      const decision = {
+        name: 'Test Decision',
+        proposal: 'Test proposal',
+        success_criteria: 'simple_majority',
+        deadline: '2026-02-15',
+        channel_id: 'C1234567890',
+        creator_id: 'U1234567890'
+      };
+
+      const decisionId = db.insertDecision(decision);
+
+      db.upsertVote({
+        decision_id: decisionId,
+        user_id: 'U1111111111',
+        vote_type: 'yes'
+      });
+
+      db.upsertVote({
+        decision_id: decisionId,
+        user_id: 'U2222222222',
+        vote_type: 'yes'
+      });
+
+      db.upsertVote({
+        decision_id: decisionId,
+        user_id: 'U3333333333',
+        vote_type: 'no'
+      });
+
+      db.upsertVote({
+        decision_id: decisionId,
+        user_id: 'U4444444444',
+        vote_type: 'abstain'
+      });
+
+      const summary = db.getVoteSummary(decisionId);
+
+      expect(summary.total_votes).toBe(4);
+      expect(summary.yes_votes).toBe(2);
+      expect(summary.no_votes).toBe(1);
+      expect(summary.abstain_votes).toBe(1);
+    });
+
+    it('should check if user is eligible to vote', () => {
+      const decision = {
+        name: 'Test Decision',
+        proposal: 'Test proposal',
+        success_criteria: 'simple_majority',
+        deadline: '2026-02-15',
+        channel_id: 'C1234567890',
+        creator_id: 'U1234567890'
+      };
+
+      const decisionId = db.insertDecision(decision);
+      const voterIds = ['U1111111111', 'U2222222222'];
+
+      db.insertVoters(decisionId, voterIds);
+
+      const isEligible1 = db.isUserEligibleToVote(decisionId, 'U1111111111');
+      const isEligible2 = db.isUserEligibleToVote(decisionId, 'U9999999999');
+
+      expect(isEligible1).toBe(true);
+      expect(isEligible2).toBe(false);
+    });
+
+    it('should get decision with stats', () => {
+      const decision = {
+        name: 'Test Decision',
+        proposal: 'Test proposal',
+        success_criteria: 'simple_majority',
+        deadline: '2026-02-15',
+        channel_id: 'C1234567890',
+        creator_id: 'U1234567890'
+      };
+
+      const decisionId = db.insertDecision(decision);
+      const voterIds = ['U1111111111', 'U2222222222', 'U3333333333'];
+
+      db.insertVoters(decisionId, voterIds);
+
+      db.upsertVote({
+        decision_id: decisionId,
+        user_id: 'U1111111111',
+        vote_type: 'yes'
+      });
+
+      const decisionWithStats = db.getDecisionWithStats(decisionId);
+
+      expect(decisionWithStats).toBeDefined();
+      expect(decisionWithStats.id).toBe(decisionId);
+      expect(decisionWithStats.requiredVotersCount).toBe(3);
+      expect(decisionWithStats.missingVotersCount).toBe(2);
+      expect(decisionWithStats.voteSummary.total_votes).toBe(1);
+      expect(decisionWithStats.voters).toHaveLength(3);
+      expect(decisionWithStats.votes).toHaveLength(1);
+    });
+
+    it('should return null for non-existent decision with stats', () => {
+      const decisionWithStats = db.getDecisionWithStats(99999);
+      expect(decisionWithStats).toBeNull();
     });
   });
 });
