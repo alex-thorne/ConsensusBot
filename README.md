@@ -133,22 +133,35 @@ npm run lint:fix
 ```
 ConsensusBot/
 ├── .github/
-│   └── workflows/        # GitHub Actions CI/CD workflows
-├── config/               # Configuration files
-├── docs/                 # Documentation
-│   ├── adr/             # Architecture Decision Records
-│   └── templates/       # Documentation templates
-├── src/                  # Application source code
-├── terraform/            # Infrastructure as Code
-├── test/                 # Test files
-├── .dockerignore         # Docker ignore file
-├── .env.example          # Example environment variables
-├── .eslintrc.json        # ESLint configuration
-├── .gitignore            # Git ignore file
-├── docker-compose.yml    # Docker Compose configuration
-├── Dockerfile            # Docker image definition
-├── jest.config.js        # Jest testing configuration
-└── package.json          # Node.js dependencies and scripts
+│   └── workflows/           # GitHub Actions CI/CD workflows
+├── config/                  # Configuration files
+│   └── default.js          # Default configuration
+├── docs/                    # Documentation
+│   ├── adr/                # Architecture Decision Records
+│   ├── templates/          # Documentation templates
+│   ├── DOCKER.md           # Docker deployment guide
+│   └── LOCAL_SETUP.md      # Local setup guide
+├── src/                     # Application source code
+│   ├── commands/           # Slash command handlers
+│   │   └── consensusCommand.js
+│   ├── modals/             # Modal definitions
+│   │   └── consensusModal.js
+│   ├── utils/              # Utility modules
+│   │   └── logger.js       # Structured logging
+│   └── index.js            # Main entry point
+├── terraform/               # Infrastructure as Code
+├── test/                    # Test files
+│   ├── commands/           # Command tests
+│   ├── utils/              # Utility tests
+│   └── index.test.js       # Integration tests
+├── .dockerignore            # Docker ignore file
+├── .env.example             # Example environment variables
+├── .eslintrc.json           # ESLint configuration
+├── .gitignore               # Git ignore file
+├── docker-compose.yml       # Docker Compose configuration
+├── Dockerfile               # Docker image definition
+├── jest.config.js           # Jest testing configuration
+└── package.json             # Node.js dependencies and scripts
 ```
 
 ## Docker Setup and Testing
@@ -186,6 +199,85 @@ docker-compose down
 2. Start the application using any of the methods above
 3. The bot will connect to Slack via Socket Mode
 4. Test by sending a message to the bot or using a slash command
+
+## Using ConsensusBot
+
+### Available Commands
+
+ConsensusBot supports the following slash commands:
+
+#### `/consensus`
+
+The main command to interact with ConsensusBot.
+
+**Usage:**
+
+```
+/consensus              # Start a new consensus decision (shows welcome message with button to open modal)
+/consensus help         # Display help information
+/consensus status       # Check your pending decisions
+```
+
+**What it does:**
+
+- Displays a welcome message explaining ConsensusBot's purpose
+- Provides a button to create a new consensus decision
+- Opens a modal to collect:
+  - **Decision Name**: The title of the decision to be made
+  - **Required Voters**: Team members whose votes are needed
+  - **Success Criteria**: The threshold for consensus (Unanimous, Super Majority, Simple Majority)
+  - **Description**: Optional context about the decision
+
+**Example Workflow:**
+
+1. Type `/consensus` in any Slack channel
+2. Click the "Create New Decision" button in the response
+3. Fill out the modal with your decision details:
+   - Decision Name: e.g., "Choose new project framework"
+   - Required Voters: Select team members from dropdown
+   - Success Criteria: Choose consensus threshold (e.g., "Simple Majority")
+   - Description: Add any additional context
+4. Click "Create" to submit the decision
+
+### Features Currently Available
+
+✅ **Slash Command Integration**
+- `/consensus` command with hello world response
+- Help and status subcommands
+- Interactive button to open decision modal
+
+✅ **Modal-Based Decision Creation**
+- Structured form for collecting decision inputs
+- User selection for required voters
+- Configurable success criteria (voting thresholds)
+- Optional description field
+
+✅ **Enhanced Logging**
+- Structured JSON logging
+- Log levels (ERROR, WARN, INFO, DEBUG)
+- Contextual information in all log entries
+
+✅ **Error Handling**
+- Global error handler for Slack events
+- Try-catch blocks in all handlers
+- User-friendly error messages
+
+### Features In Development
+
+🚧 **Database Integration** (Coming Soon)
+- Persistence of decisions
+- Vote tracking
+- Decision history
+
+🚧 **Voting Mechanisms** (Coming Soon)
+- Vote submission interface
+- Real-time vote counting
+- Consensus calculation based on criteria
+
+🚧 **Notifications** (Coming Soon)
+- Notify required voters when decisions are created
+- Updates when votes are cast
+- Final decision notifications
 
 ## Infrastructure
 
@@ -229,11 +321,34 @@ For questions or issues, please:
 
 ## Roadmap
 
-- [ ] Implement proposal creation workflow
-- [ ] Add voting mechanisms
-- [ ] Integrate with project management tools
-- [ ] Add analytics and reporting
+### Stage 1: Application Scaffolding ✅ (Current)
+- [x] Main entry point with Bolt SDK
+- [x] Robust folder structure (commands/, modals/, utils/)
+- [x] Environment management with dotenv
+- [x] Basic `/consensus` slash command
+- [x] Mock Modal for decision inputs
+- [x] Logging and error handling
+- [x] Docker setup and documentation
+- [x] Initial test suite (26 tests passing)
+
+### Stage 2: Database Integration 🚧 (Next)
+- [ ] Database schema design
+- [ ] Decision persistence
+- [ ] Vote tracking system
+- [ ] User and channel management
+
+### Stage 3: Voting Mechanisms
+- [ ] Vote submission interface
+- [ ] Real-time vote counting
+- [ ] Consensus calculation
+- [ ] Decision status updates
+
+### Stage 4: Advanced Features
+- [ ] Smart notifications
+- [ ] Decision analytics and reporting
+- [ ] Integration with project management tools
 - [ ] Support for multiple decision-making frameworks
+- [ ] Admin controls and permissions
 
 ---
 
