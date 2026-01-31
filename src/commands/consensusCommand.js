@@ -290,6 +290,52 @@ const registerVotingHandlers = (app) => {
       const decisionId = parseInt(action.value);
       const userId = body.user.id;
       
+      // Check if user is eligible to vote
+      const isEligible = db.isUserEligibleToVote(decisionId, userId);
+      
+      if (!isEligible) {
+        logger.warn('Ineligible user attempted to vote', {
+          decisionId,
+          userId,
+          voteType: 'yes'
+        });
+        
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: userId,
+          text: '⚠️ You are not eligible to vote on this decision. Only required voters can cast votes.'
+        });
+        return;
+      }
+      
+      // Get decision to check if it's still active
+      const decision = db.getDecision(decisionId);
+      
+      if (!decision) {
+        logger.error('Decision not found', { decisionId });
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: userId,
+          text: '❌ Decision not found.'
+        });
+        return;
+      }
+      
+      if (decision.status !== 'active') {
+        logger.warn('Vote attempted on non-active decision', {
+          decisionId,
+          userId,
+          status: decision.status
+        });
+        
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: userId,
+          text: `⚠️ This decision is no longer active (status: ${decision.status}). Votes cannot be changed.`
+        });
+        return;
+      }
+      
       logger.info('Vote cast', {
         decisionId,
         userId,
@@ -303,9 +349,6 @@ const registerVotingHandlers = (app) => {
         vote_type: 'yes'
       });
       
-      // Get decision for confirmation message
-      const decision = db.getDecision(decisionId);
-      
       // Send confirmation
       await client.chat.postEphemeral({
         channel: body.channel.id,
@@ -318,6 +361,19 @@ const registerVotingHandlers = (app) => {
         error: error.message,
         stack: error.stack
       });
+      
+      // Send error message to user
+      try {
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: body.user.id,
+          text: '❌ An error occurred while recording your vote. Please try again.'
+        });
+      } catch (ephemeralError) {
+        logger.error('Error sending error message', {
+          error: ephemeralError.message
+        });
+      }
     }
   });
   
@@ -328,6 +384,52 @@ const registerVotingHandlers = (app) => {
       
       const decisionId = parseInt(action.value);
       const userId = body.user.id;
+      
+      // Check if user is eligible to vote
+      const isEligible = db.isUserEligibleToVote(decisionId, userId);
+      
+      if (!isEligible) {
+        logger.warn('Ineligible user attempted to vote', {
+          decisionId,
+          userId,
+          voteType: 'no'
+        });
+        
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: userId,
+          text: '⚠️ You are not eligible to vote on this decision. Only required voters can cast votes.'
+        });
+        return;
+      }
+      
+      // Get decision to check if it's still active
+      const decision = db.getDecision(decisionId);
+      
+      if (!decision) {
+        logger.error('Decision not found', { decisionId });
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: userId,
+          text: '❌ Decision not found.'
+        });
+        return;
+      }
+      
+      if (decision.status !== 'active') {
+        logger.warn('Vote attempted on non-active decision', {
+          decisionId,
+          userId,
+          status: decision.status
+        });
+        
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: userId,
+          text: `⚠️ This decision is no longer active (status: ${decision.status}). Votes cannot be changed.`
+        });
+        return;
+      }
       
       logger.info('Vote cast', {
         decisionId,
@@ -342,9 +444,6 @@ const registerVotingHandlers = (app) => {
         vote_type: 'no'
       });
       
-      // Get decision for confirmation message
-      const decision = db.getDecision(decisionId);
-      
       // Send confirmation
       await client.chat.postEphemeral({
         channel: body.channel.id,
@@ -357,6 +456,19 @@ const registerVotingHandlers = (app) => {
         error: error.message,
         stack: error.stack
       });
+      
+      // Send error message to user
+      try {
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: body.user.id,
+          text: '❌ An error occurred while recording your vote. Please try again.'
+        });
+      } catch (ephemeralError) {
+        logger.error('Error sending error message', {
+          error: ephemeralError.message
+        });
+      }
     }
   });
   
@@ -367,6 +479,52 @@ const registerVotingHandlers = (app) => {
       
       const decisionId = parseInt(action.value);
       const userId = body.user.id;
+      
+      // Check if user is eligible to vote
+      const isEligible = db.isUserEligibleToVote(decisionId, userId);
+      
+      if (!isEligible) {
+        logger.warn('Ineligible user attempted to vote', {
+          decisionId,
+          userId,
+          voteType: 'abstain'
+        });
+        
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: userId,
+          text: '⚠️ You are not eligible to vote on this decision. Only required voters can cast votes.'
+        });
+        return;
+      }
+      
+      // Get decision to check if it's still active
+      const decision = db.getDecision(decisionId);
+      
+      if (!decision) {
+        logger.error('Decision not found', { decisionId });
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: userId,
+          text: '❌ Decision not found.'
+        });
+        return;
+      }
+      
+      if (decision.status !== 'active') {
+        logger.warn('Vote attempted on non-active decision', {
+          decisionId,
+          userId,
+          status: decision.status
+        });
+        
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: userId,
+          text: `⚠️ This decision is no longer active (status: ${decision.status}). Votes cannot be changed.`
+        });
+        return;
+      }
       
       logger.info('Vote cast', {
         decisionId,
@@ -381,9 +539,6 @@ const registerVotingHandlers = (app) => {
         vote_type: 'abstain'
       });
       
-      // Get decision for confirmation message
-      const decision = db.getDecision(decisionId);
-      
       // Send confirmation
       await client.chat.postEphemeral({
         channel: body.channel.id,
@@ -396,6 +551,19 @@ const registerVotingHandlers = (app) => {
         error: error.message,
         stack: error.stack
       });
+      
+      // Send error message to user
+      try {
+        await client.chat.postEphemeral({
+          channel: body.channel.id,
+          user: body.user.id,
+          text: '❌ An error occurred while recording your vote. Please try again.'
+        });
+      } catch (ephemeralError) {
+        logger.error('Error sending error message', {
+          error: ephemeralError.message
+        });
+      }
     }
   });
   

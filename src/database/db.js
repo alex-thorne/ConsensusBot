@@ -10,18 +10,28 @@ const path = require('path');
 const fs = require('fs');
 const logger = require('../utils/logger');
 
-// Database file path
-const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '../../data/consensus.db');
-
-// Ensure data directory exists
-const dataDir = path.dirname(DB_PATH);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-  logger.info('Created data directory', { path: dataDir });
-}
-
 // Initialize database connection
 let db;
+
+/**
+ * Get database path
+ * @returns {string} Database file path
+ */
+const getDBPath = () => {
+  return process.env.DATABASE_PATH || path.join(__dirname, '../../data/consensus.db');
+};
+
+/**
+ * Ensure data directory exists
+ */
+const ensureDataDirectory = () => {
+  const DB_PATH = getDBPath();
+  const dataDir = path.dirname(DB_PATH);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+    logger.info('Created data directory', { path: dataDir });
+  }
+};
 
 /**
  * Get database connection
@@ -29,6 +39,8 @@ let db;
  */
 const getDatabase = () => {
   if (!db) {
+    ensureDataDirectory();
+    const DB_PATH = getDBPath();
     db = new Database(DB_PATH, { verbose: logger.debug });
     logger.info('Database connection established', { path: DB_PATH });
     
@@ -231,6 +243,129 @@ const updateDecisionStatus = (decisionId, status) => {
 };
 
 /**
+ * Get all open decisions
+ * @returns {Array<object>} Array of open decisions
+ */
+const getOpenDecisions = () => {
+  const db = getDatabase();
+  
+  const stmt = db.prepare(`
+    SELECT * FROM decisions 
+    WHERE status = 'active' 
+    ORDER BY deadline ASC
+  `);
+  const decisions = stmt.all();
+  
+  logger.debug('Open decisions retrieved', { count: decisions.length });
+  
+  return decisions;
+};
+
+/**
+ * Get missing voters for a decision
+ * Returns voters who haven't cast their vote yet
+ * @param {number} decisionId - Decision ID
+ * @returns {Array<object>} Array of voters who haven't voted
+ */
+const getMissingVoters = (decisionId) => {
+  const db = getDatabase();
+  
+  const stmt = db.prepare(`
+    SELECT v.* 
+    FROM voters v
+    LEFT JOIN votes vt ON v.decision_id = vt.decision_id AND v.user_id = vt.user_id
+    WHERE v.decision_id = ? AND vt.id IS NULL
+  `);
+  
+  const missingVoters = stmt.all(decisionId);
+  
+  logger.debug('Missing voters retrieved', { 
+    decisionId, 
+    count: missingVoters.length 
+  });
+  
+  return missingVoters;
+};
+
+/**
+ * Get vote summary for a decision
+ * @param {number} decisionId - Decision ID
+ * @returns {object} Vote summary with counts and percentages
+ */
+const getVoteSummary = (decisionId) => {
+  const db = getDatabase();
+  
+  const stmt = db.prepare(`
+    SELECT 
+      COUNT(*) as total_votes,
+      SUM(CASE WHEN vote_type = 'yes' THEN 1 ELSE 0 END) as yes_votes,
+      SUM(CASE WHEN vote_type = 'no' THEN 1 ELSE 0 END) as no_votes,
+      SUM(CASE WHEN vote_type = 'abstain' THEN 1 ELSE 0 END) as abstain_votes
+    FROM votes
+    WHERE decision_id = ?
+  `);
+  
+  const summary = stmt.get(decisionId);
+  
+  logger.debug('Vote summary retrieved', { decisionId, summary });
+  
+  return summary;
+};
+
+/**
+ * Check if user is eligible to vote on a decision
+ * @param {number} decisionId - Decision ID
+ * @param {string} userId - User ID to check
+ * @returns {boolean} True if user is eligible
+ */
+const isUserEligibleToVote = (decisionId, userId) => {
+  const db = getDatabase();
+  
+  const stmt = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM voters
+    WHERE decision_id = ? AND user_id = ?
+  `);
+  
+  const result = stmt.get(decisionId, userId);
+  const isEligible = result.count > 0;
+  
+  logger.debug('User eligibility checked', { 
+    decisionId, 
+    userId, 
+    isEligible 
+  });
+  
+  return isEligible;
+};
+
+/**
+ * Get decision with vote counts and voter information
+ * @param {number} decisionId - Decision ID
+ * @returns {object} Decision with additional vote statistics
+ */
+const getDecisionWithStats = (decisionId) => {
+  const decision = getDecision(decisionId);
+  if (!decision) {
+    return null;
+  }
+
+  const voters = getVoters(decisionId);
+  const votes = getVotes(decisionId);
+  const voteSummary = getVoteSummary(decisionId);
+  const missingVoters = getMissingVoters(decisionId);
+
+  return {
+    ...decision,
+    requiredVotersCount: voters.length,
+    voteSummary,
+    missingVotersCount: missingVoters.length,
+    voters,
+    votes
+  };
+};
+
+/**
  * Close database connection
  */
 const closeDatabase = () => {
@@ -251,5 +386,10 @@ module.exports = {
   getVotes,
   updateDecisionMessage,
   updateDecisionStatus,
+  getOpenDecisions,
+  getMissingVoters,
+  getVoteSummary,
+  isUserEligibleToVote,
+  getDecisionWithStats,
   closeDatabase
 };
