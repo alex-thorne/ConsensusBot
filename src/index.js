@@ -15,7 +15,7 @@ const { App } = require('@slack/bolt');
 require('dotenv').config();
 
 const logger = require('./utils/logger');
-const { registerConsensusCommand } = require('./commands/consensusCommand');
+const { registerConsensusCommand, registerVotingHandlers } = require('./commands/consensusCommand');
 
 // Initialize the Slack app with configuration from environment variables
 const app = new App({
@@ -43,6 +43,7 @@ app.use(async ({ next }) => {
  * Register command handlers
  */
 registerConsensusCommand(app);
+registerVotingHandlers(app);
 
 /**
  * Home Tab - Display the app home screen

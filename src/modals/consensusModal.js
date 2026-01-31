@@ -2,8 +2,10 @@
  * Consensus Decision Modal Definition
  * 
  * This module defines the modal structure for collecting consensus decision inputs.
- * The modal collects: decision name, required voters, and success criteria.
+ * The modal collects: decision name, required voters, proposal, success criteria, and deadline.
  */
+
+const { getDefaultDeadline } = require('../utils/dateUtils');
 
 /**
  * Create a consensus decision modal
@@ -12,6 +14,7 @@
  * @returns {object} Modal view object for Slack API
  */
 const createConsensusModal = (triggerId) => {
+  const defaultDeadline = getDefaultDeadline();
   return {
     trigger_id: triggerId,
     view: {
@@ -69,6 +72,28 @@ const createConsensusModal = (triggerId) => {
         },
         {
           type: 'input',
+          block_id: 'proposal_block',
+          label: {
+            type: 'plain_text',
+            text: 'The Proposal'
+          },
+          element: {
+            type: 'plain_text_input',
+            action_id: 'proposal_input',
+            multiline: true,
+            placeholder: {
+              type: 'plain_text',
+              text: 'Describe the target outcome and strategic alignment...'
+            },
+            max_length: 2000
+          },
+          hint: {
+            type: 'plain_text',
+            text: 'Provide the details of the proposal including target outcome and strategic alignment'
+          }
+        },
+        {
+          type: 'input',
           block_id: 'success_criteria_block',
           label: {
             type: 'plain_text',
@@ -85,14 +110,14 @@ const createConsensusModal = (triggerId) => {
               {
                 text: {
                   type: 'plain_text',
-                  text: 'Unanimous (100%)'
+                  text: 'Unanimity (100%)'
                 },
                 value: 'unanimous'
               },
               {
                 text: {
                   type: 'plain_text',
-                  text: 'Super Majority (75%)'
+                  text: 'Supermajority (75%)'
                 },
                 value: 'super_majority'
               },
@@ -112,22 +137,24 @@ const createConsensusModal = (triggerId) => {
         },
         {
           type: 'input',
-          block_id: 'description_block',
+          block_id: 'deadline_block',
           label: {
             type: 'plain_text',
-            text: 'Description (Optional)'
+            text: 'Deadline'
           },
           element: {
-            type: 'plain_text_input',
-            action_id: 'description_input',
-            multiline: true,
+            type: 'datepicker',
+            action_id: 'deadline_input',
+            initial_date: defaultDeadline,
             placeholder: {
               type: 'plain_text',
-              text: 'Provide additional context or details about this decision...'
-            },
-            max_length: 1000
+              text: 'Select deadline date'
+            }
           },
-          optional: true
+          hint: {
+            type: 'plain_text',
+            text: 'Choose the deadline for this decision (default is 5 business days from now)'
+          }
         }
       ]
     }

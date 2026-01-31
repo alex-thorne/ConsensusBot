@@ -48,7 +48,7 @@ describe('Consensus Command', () => {
       const modal = createConsensusModal('test-trigger');
       const blocks = modal.view.blocks;
 
-      expect(blocks).toHaveLength(4);
+      expect(blocks).toHaveLength(5);
 
       // Check decision name block
       const decisionNameBlock = blocks[0];
@@ -64,23 +64,31 @@ describe('Consensus Command', () => {
       expect(votersBlock.element.type).toBe('multi_users_select');
       expect(votersBlock.element.action_id).toBe('required_voters_input');
 
+      // Check proposal block
+      const proposalBlock = blocks[2];
+      expect(proposalBlock.type).toBe('input');
+      expect(proposalBlock.block_id).toBe('proposal_block');
+      expect(proposalBlock.element.type).toBe('plain_text_input');
+      expect(proposalBlock.element.action_id).toBe('proposal_input');
+
       // Check success criteria block
-      const criteriaBlock = blocks[2];
+      const criteriaBlock = blocks[3];
       expect(criteriaBlock.type).toBe('input');
       expect(criteriaBlock.block_id).toBe('success_criteria_block');
       expect(criteriaBlock.element.type).toBe('static_select');
       expect(criteriaBlock.element.action_id).toBe('success_criteria_input');
 
-      // Check description block
-      const descriptionBlock = blocks[3];
-      expect(descriptionBlock.type).toBe('input');
-      expect(descriptionBlock.block_id).toBe('description_block');
-      expect(descriptionBlock.optional).toBe(true);
+      // Check deadline block
+      const deadlineBlock = blocks[4];
+      expect(deadlineBlock.type).toBe('input');
+      expect(deadlineBlock.block_id).toBe('deadline_block');
+      expect(deadlineBlock.element.type).toBe('datepicker');
+      expect(deadlineBlock.element.action_id).toBe('deadline_input');
     });
 
     it('should have correct success criteria options', () => {
       const modal = createConsensusModal('test-trigger');
-      const criteriaBlock = modal.view.blocks[2];
+      const criteriaBlock = modal.view.blocks[3];
       const options = criteriaBlock.element.options;
 
       expect(options).toHaveLength(3);
@@ -140,13 +148,17 @@ describe('Consensus Command', () => {
       expect(blocks[1].element.placeholder).toBeDefined();
       expect(blocks[1].element.placeholder.type).toBe('plain_text');
       
-      // Success criteria should have placeholder
+      // Proposal should have placeholder
       expect(blocks[2].element.placeholder).toBeDefined();
       expect(blocks[2].element.placeholder.type).toBe('plain_text');
       
-      // Description should have placeholder
+      // Success criteria should have placeholder
       expect(blocks[3].element.placeholder).toBeDefined();
       expect(blocks[3].element.placeholder.type).toBe('plain_text');
+      
+      // Deadline should have placeholder
+      expect(blocks[4].element.placeholder).toBeDefined();
+      expect(blocks[4].element.placeholder.type).toBe('plain_text');
     });
 
     it('should have hints for complex inputs', () => {
@@ -157,9 +169,17 @@ describe('Consensus Command', () => {
       expect(blocks[1].hint).toBeDefined();
       expect(blocks[1].hint.type).toBe('plain_text');
       
-      // Success criteria should have a hint
+      // Proposal should have a hint
       expect(blocks[2].hint).toBeDefined();
       expect(blocks[2].hint.type).toBe('plain_text');
+      
+      // Success criteria should have a hint
+      expect(blocks[3].hint).toBeDefined();
+      expect(blocks[3].hint.type).toBe('plain_text');
+      
+      // Deadline should have a hint
+      expect(blocks[4].hint).toBeDefined();
+      expect(blocks[4].hint.type).toBe('plain_text');
     });
 
     it('should enforce input constraints', () => {
@@ -169,11 +189,11 @@ describe('Consensus Command', () => {
       // Decision name should have max length
       expect(blocks[0].element.max_length).toBe(200);
       
-      // Description should have max length
-      expect(blocks[3].element.max_length).toBe(1000);
+      // Proposal should have max length
+      expect(blocks[2].element.max_length).toBe(2000);
       
-      // Description should be multiline
-      expect(blocks[3].element.multiline).toBe(true);
+      // Proposal should be multiline
+      expect(blocks[2].element.multiline).toBe(true);
     });
   });
 
