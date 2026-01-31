@@ -104,7 +104,7 @@ const sendVoterReminder = async (client, userId, decision, messageUrl) => {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `👋 Hi! This is a friendly reminder that your vote is needed for the following decision:`
+            text: '👋 Hi! This is a friendly reminder that your vote is needed for the following decision:'
           }
         },
         {
@@ -331,7 +331,7 @@ const runNudger = async (client) => {
  *   ]
  * }
  */
-const azureTimerHandler = async (context, myTimer) => {
+const azureTimerHandler = async (context) => {
   context.log('Nudger timer trigger function started');
   
   // Initialize Slack client (would need to be configured)

@@ -46,7 +46,7 @@ const calculateVoteCounts = (votes) => {
  * @returns {object} Result object with status and details
  */
 const calculateSimpleMajority = (voteCounts) => {
-  const { yes, no, abstain, total } = voteCounts;
+  const { yes, total } = voteCounts;
   
   // Edge case: no votes cast
   if (total === 0) {
@@ -205,23 +205,23 @@ const calculateDecisionOutcome = (votes, successCriteria, requiredVotersCount, q
 
   let result;
   switch (successCriteria) {
-    case 'simple_majority':
-      result = calculateSimpleMajority(voteCounts);
-      break;
-    case 'super_majority':
-      result = calculateSupermajority(voteCounts, requiredVotersCount);
-      break;
-    case 'unanimous':
-      result = calculateUnanimity(voteCounts, requiredVotersCount, quorum);
-      break;
-    default:
-      logger.error('Invalid success criteria', { successCriteria });
-      return {
-        passed: false,
-        reason: `Invalid success criteria: ${successCriteria}`,
-        voteCounts,
-        error: true
-      };
+  case 'simple_majority':
+    result = calculateSimpleMajority(voteCounts);
+    break;
+  case 'super_majority':
+    result = calculateSupermajority(voteCounts, requiredVotersCount);
+    break;
+  case 'unanimous':
+    result = calculateUnanimity(voteCounts, requiredVotersCount, quorum);
+    break;
+  default:
+    logger.error('Invalid success criteria', { successCriteria });
+    return {
+      passed: false,
+      reason: `Invalid success criteria: ${successCriteria}`,
+      voteCounts,
+      error: true
+    };
   }
 
   logger.info('Decision outcome calculated', {
@@ -251,40 +251,41 @@ const checkDeadlock = (votes, successCriteria, requiredVotersCount) => {
   let reason = '';
 
   switch (successCriteria) {
-    case 'simple_majority':
-      // For simple majority, check if even with all remaining votes as yes, we can't reach >50%
-      // or if even with all remaining votes as no, yes still has >50%
-      const maxPossibleYes = yes + remainingVotes;
-      const maxPossibleNo = no + remainingVotes;
-      const totalAfterRemaining = total + remainingVotes;
+  case 'simple_majority': {
+    // For simple majority, check if even with all remaining votes as yes, we can't reach >50%
+    // or if even with all remaining votes as no, yes still has >50%
+    const maxPossibleYes = yes + remainingVotes;
+    const totalAfterRemaining = total + remainingVotes;
       
-      // Already passed - not a deadlock
-      if ((yes / total) > 0.5) {
-        isDeadlocked = false;
-      }
-      // Can't reach majority even with all remaining as yes
-      else if ((maxPossibleYes / totalAfterRemaining) <= 0.5) {
-        isDeadlocked = true;
-        reason = 'Cannot reach simple majority even if all remaining votes are yes';
-      }
-      break;
+    // Already passed - not a deadlock
+    if ((yes / total) > 0.5) {
+      isDeadlocked = false;
+    }
+    // Can't reach majority even with all remaining as yes
+    else if ((maxPossibleYes / totalAfterRemaining) <= 0.5) {
+      isDeadlocked = true;
+      reason = 'Cannot reach simple majority even if all remaining votes are yes';
+    }
+    break;
+  }
 
-    case 'super_majority':
-      // Check if we can still reach 66% with remaining votes
-      const maxYes = yes + remainingVotes;
-      if ((maxYes / requiredVotersCount) < 0.66) {
-        isDeadlocked = true;
-        reason = 'Cannot reach supermajority (66%) even if all remaining votes are yes';
-      }
-      break;
+  case 'super_majority': {
+    // Check if we can still reach 66% with remaining votes
+    const maxYes = yes + remainingVotes;
+    if ((maxYes / requiredVotersCount) < 0.66) {
+      isDeadlocked = true;
+      reason = 'Cannot reach supermajority (66%) even if all remaining votes are yes';
+    }
+    break;
+  }
 
-    case 'unanimous':
-      // Any No vote creates a deadlock for unanimity
-      if (no > 0) {
-        isDeadlocked = true;
-        reason = 'Unanimity impossible due to existing no vote(s)';
-      }
-      break;
+  case 'unanimous':
+    // Any No vote creates a deadlock for unanimity
+    if (no > 0) {
+      isDeadlocked = true;
+      reason = 'Unanimity impossible due to existing no vote(s)';
+    }
+    break;
   }
 
   return {

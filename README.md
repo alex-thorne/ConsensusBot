@@ -376,9 +376,15 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 Additional documentation can be found in the `docs/` directory:
 
-- Architecture Decision Records (ADRs)
-- API documentation
-- Deployment guides
+### Core Documentation
+- [Local Setup Guide](docs/LOCAL_SETUP.md) - Getting started with local development
+- [Docker Deployment](docs/DOCKER.md) - Running with Docker
+- [Voting Backend](docs/VOTING_BACKEND.md) - Voting validation and decision outcome logic
+- [Reminder System Deployment](docs/REMINDER_DEPLOYMENT.md) - Automated voter reminder system
+
+### Architecture
+- [Architecture Decision Records (ADRs)](docs/adr/) - Key architectural decisions
+- [Stage 1 Summary](docs/STAGE1_SUMMARY.md) - Initial implementation overview
 
 ## License
 
@@ -418,13 +424,25 @@ For questions or issues, please:
 - [x] Vote recording and updates
 - [x] Message pinning for visibility
 - [x] Enhanced modal with proposal and deadline fields
+- [x] Vote eligibility validation
+- [x] Decision status checks during voting
 
-### Stage 4: Advanced Features (In Progress)
-- [ ] Real-time vote counting and progress updates
-- [ ] Consensus calculation and decision status updates
-- [ ] Smart notifications for voters and decision creators
-- [ ] Decision analytics and reporting
-- [ ] Deadline enforcement and automatic status updates
+### Stage 4: Decision Outcome & Reminders ✅ (Completed)
+- [x] Consensus calculation engine (Simple Majority, Supermajority, Unanimity)
+- [x] Decision outcome logic with edge case handling
+- [x] Deadlock detection algorithms
+- [x] Vote counting and summary queries
+- [x] Missing voter identification
+- [x] Automated reminder system (Nudger) with DM capability
+- [x] Comprehensive documentation for voting backend
+- [x] Full unit test coverage for decision logic
+
+### Stage 5: Advanced Features (Planned)
+- [ ] Real-time vote counting and progress updates in Slack messages
+- [ ] Automatic decision status updates based on outcomes
+- [ ] Deploy reminder system to Azure Timer Function
+- [ ] Decision analytics dashboard and reporting
+- [ ] Deadline enforcement and automatic decision closure
 - [ ] Integration with project management tools
 - [ ] Support for multiple decision-making frameworks
 - [ ] Admin controls and permissions
