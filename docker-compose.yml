@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  consensusbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: consensusbot
+    restart: unless-stopped
+    ports:
+      # Map container port 3000 to host port 3000
+      - "3000:3000"
+    environment:
+      # Environment variables for Slack configuration
+      # These should be set in a .env file (see .env.example)
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
+      - PORT=${PORT:-3000}
+      - NODE_ENV=${NODE_ENV:-development}
+    env_file:
+      # Load environment variables from .env file
+      - .env
+    volumes:
+      # Mount source code for development (comment out for production)
+      - ./src:/app/src
+      - ./config:/app/config
+    networks:
+      - consensusbot-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+networks:
+  consensusbot-network:
+    driver: bridge
