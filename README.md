@@ -42,10 +42,31 @@ npm install
 1. Go to [Slack API Dashboard](https://api.slack.com/apps)
 2. Create a new app or use an existing one
 3. Configure the following settings:
-   - **OAuth & Permissions**: Add required bot token scopes
-   - **Socket Mode**: Enable Socket Mode and create an App-Level Token
-   - **Event Subscriptions**: Subscribe to relevant events
-   - **Slash Commands**: Create commands (e.g., `/consensus`)
+
+   **OAuth & Permissions** - Add required bot token scopes:
+   - `chat:write` - Post messages to channels
+   - `chat:write.public` - Post messages to public channels without joining
+   - `commands` - Add slash commands
+   - `pins:write` - Pin messages to channels
+   - `users:read` - View users in the workspace
+   
+   **Socket Mode**: 
+   - Enable Socket Mode
+   - Create an App-Level Token with `connections:write` scope
+   
+   **Event Subscriptions**: 
+   - Subscribe to `app_home_opened` event
+   - Subscribe to `message.channels` event (optional, for message handling)
+   
+   **Slash Commands**: 
+   - Create `/consensus` command
+   - Request URL can be blank when using Socket Mode
+   - Description: "Create a new consensus decision"
+   - Usage hint: "[help|status]"
+
+   **App Home**:
+   - Enable the Home Tab
+   - Enable the Messages Tab
 
 ### 4. Set Up Environment Variables
 
@@ -61,7 +82,10 @@ Edit `.env` and add your Slack tokens:
 SLACK_BOT_TOKEN=xoxb-your-bot-token
 SLACK_SIGNING_SECRET=your-signing-secret
 SLACK_APP_TOKEN=xapp-your-app-token
+DATABASE_PATH=./data/consensus.db  # Optional: defaults to ./data/consensus.db
 ```
+
+**Note:** The database will be automatically created on first run. No manual database setup is required.
 
 ### 5. Run the Application
 
@@ -223,34 +247,57 @@ The main command to interact with ConsensusBot.
 - Displays a welcome message explaining ConsensusBot's purpose
 - Provides a button to create a new consensus decision
 - Opens a modal to collect:
-  - **Decision Name**: The title of the decision to be made
-  - **Required Voters**: Team members whose votes are needed
-  - **Success Criteria**: The threshold for consensus (Unanimous, Super Majority, Simple Majority)
-  - **Description**: Optional context about the decision
+  - **Decision Name**: The title of the decision to be made (required)
+  - **Required Voters**: Team members whose votes are needed (required, multi-select)
+  - **The Proposal**: Details of the target outcome and strategic alignment (required, max 2000 characters)
+  - **Success Criteria**: The threshold for consensus - Unanimity (100%), Supermajority (75%), or Simple Majority (50%+1) (required)
+  - **Deadline**: The date by which votes must be cast (defaults to 5 business days from now)
 
 **Example Workflow:**
 
 1. Type `/consensus` in any Slack channel
 2. Click the "Create New Decision" button in the response
 3. Fill out the modal with your decision details:
-   - Decision Name: e.g., "Choose new project framework"
-   - Required Voters: Select team members from dropdown
-   - Success Criteria: Choose consensus threshold (e.g., "Simple Majority")
-   - Description: Add any additional context
+   - **Decision Name**: e.g., "Choose new project framework"
+   - **Required Voters**: Select team members from dropdown (e.g., @alice, @bob, @charlie)
+   - **The Proposal**: "We need to decide on a frontend framework for our new project. React has strong community support and aligns with our team's existing skills."
+   - **Success Criteria**: Choose consensus threshold (e.g., "Simple Majority")
+   - **Deadline**: Select a date or use the default (5 business days)
 4. Click "Create" to submit the decision
+5. A voting message will be posted to the channel with Yes/No/Abstain buttons
+6. The message will be automatically pinned for visibility
+7. Team members can cast their votes by clicking the buttons
+8. Votes are recorded in the database and can be changed until the deadline
 
 ### Features Currently Available
 
 ✅ **Slash Command Integration**
-- `/consensus` command with hello world response
+- `/consensus` command with interactive welcome message
 - Help and status subcommands
 - Interactive button to open decision modal
 
 ✅ **Modal-Based Decision Creation**
 - Structured form for collecting decision inputs
-- User selection for required voters
+- Multi-user selection for required voters
+- Proposal field with support for detailed descriptions
 - Configurable success criteria (voting thresholds)
-- Optional description field
+- Date picker for deadline with smart default (5 business days)
+- Input validation and constraints
+
+✅ **Database Integration**
+- SQLite database for decision persistence
+- Decisions table storing all decision metadata
+- Voters table linking users to decisions
+- Votes table tracking individual votes
+- Automatic schema initialization
+- Transaction support for data consistency
+
+✅ **Voting Mechanisms**
+- Interactive voting message with Block Kit buttons
+- Yes/No/Abstain voting options
+- Vote recording and update capability (users can change their votes)
+- Automatic message pinning for visibility
+- Vote confirmation messages
 
 ✅ **Enhanced Logging**
 - Structured JSON logging
@@ -262,22 +309,48 @@ The main command to interact with ConsensusBot.
 - Try-catch blocks in all handlers
 - User-friendly error messages
 
+### Database Schema
+
+ConsensusBot uses SQLite to store decision data. The database is automatically created on first run.
+
+**Decisions Table:**
+- `id`: Unique identifier
+- `name`: Decision name/title
+- `proposal`: Detailed proposal description
+- `success_criteria`: Voting threshold (simple_majority, super_majority, unanimous)
+- `deadline`: Voting deadline date
+- `channel_id`: Slack channel where decision was created
+- `creator_id`: User who created the decision
+- `message_ts`: Timestamp of the voting message (for updates)
+- `status`: Current status (active, approved, rejected, expired)
+- `created_at`, `updated_at`: Timestamps
+
+**Voters Table:**
+- `id`: Unique identifier
+- `decision_id`: Reference to the decision
+- `user_id`: Slack user ID of the voter
+- `required`: Whether this user's vote is required
+- `created_at`: Timestamp
+
+**Votes Table:**
+- `id`: Unique identifier
+- `decision_id`: Reference to the decision
+- `user_id`: Slack user ID of the voter
+- `vote_type`: The vote cast (yes, no, abstain)
+- `voted_at`: Timestamp of when the vote was cast
+
 ### Features In Development
-
-🚧 **Database Integration** (Coming Soon)
-- Persistence of decisions
-- Vote tracking
-- Decision history
-
-🚧 **Voting Mechanisms** (Coming Soon)
-- Vote submission interface
-- Real-time vote counting
-- Consensus calculation based on criteria
 
 🚧 **Notifications** (Coming Soon)
 - Notify required voters when decisions are created
 - Updates when votes are cast
 - Final decision notifications
+
+🚧 **Decision Analytics** (Coming Soon)
+- Real-time vote counting and progress tracking
+- Consensus calculation based on criteria
+- Decision status updates (approved/rejected)
+- Historical decision analytics
 
 ## Infrastructure
 
@@ -321,31 +394,37 @@ For questions or issues, please:
 
 ## Roadmap
 
-### Stage 1: Application Scaffolding ✅ (Current)
+### Stage 1: Application Scaffolding ✅ (Completed)
 - [x] Main entry point with Bolt SDK
-- [x] Robust folder structure (commands/, modals/, utils/)
+- [x] Robust folder structure (commands/, modals/, utils/, database/)
 - [x] Environment management with dotenv
 - [x] Basic `/consensus` slash command
-- [x] Mock Modal for decision inputs
+- [x] Interactive modal for decision inputs
 - [x] Logging and error handling
 - [x] Docker setup and documentation
 - [x] Initial test suite (26 tests passing)
 
-### Stage 2: Database Integration 🚧 (Next)
-- [ ] Database schema design
-- [ ] Decision persistence
-- [ ] Vote tracking system
-- [ ] User and channel management
+### Stage 2: Database Integration ✅ (Completed)
+- [x] Database schema design (SQLite)
+- [x] Decision persistence
+- [x] Vote tracking system
+- [x] Voter management
+- [x] Database utilities and queries
+- [x] Comprehensive test coverage (54 tests passing)
 
-### Stage 3: Voting Mechanisms
-- [ ] Vote submission interface
-- [ ] Real-time vote counting
-- [ ] Consensus calculation
-- [ ] Decision status updates
+### Stage 3: Voting Mechanisms ✅ (Completed)
+- [x] Vote submission interface with Block Kit buttons
+- [x] Interactive Yes/No/Abstain voting
+- [x] Vote recording and updates
+- [x] Message pinning for visibility
+- [x] Enhanced modal with proposal and deadline fields
 
-### Stage 4: Advanced Features
-- [ ] Smart notifications
+### Stage 4: Advanced Features (In Progress)
+- [ ] Real-time vote counting and progress updates
+- [ ] Consensus calculation and decision status updates
+- [ ] Smart notifications for voters and decision creators
 - [ ] Decision analytics and reporting
+- [ ] Deadline enforcement and automatic status updates
 - [ ] Integration with project management tools
 - [ ] Support for multiple decision-making frameworks
 - [ ] Admin controls and permissions
