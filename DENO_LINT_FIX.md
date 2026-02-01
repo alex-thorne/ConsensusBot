@@ -39,7 +39,7 @@ This prevents Deno from linting/formatting old Node.js code that shouldn't be ch
 ### 2. Fix TypeScript Type Issues
 
 #### workflows/send_reminders.ts
-**Issue**: Unused `Schema` import  
+**Issue**: Unused `Schema` import
 **Fix**: Removed the import since it wasn't being used
 
 ```typescript
@@ -51,7 +51,7 @@ import { DefineWorkflow } from "deno-slack-sdk/mod.ts";
 ```
 
 #### functions/send_reminders.ts
-**Issues**: 4 `any` types  
+**Issues**: 4 `any` types
 **Fix**: Added proper type definitions
 
 ```typescript
@@ -96,7 +96,7 @@ async function sendReminderDM(
 ```
 
 #### functions/create_decision.ts
-**Issues**: 2 `any` types  
+**Issues**: 2 `any` types
 **Fix**: Added Block Kit type definitions
 
 ```typescript
@@ -130,7 +130,7 @@ blocks: message.message?.blocks?.map((block) => {
 ```
 
 #### functions/record_vote.ts
-**Issues**: 3 `any` types  
+**Issues**: 3 `any` types
 **Fix**: Added comprehensive Slack API type definitions
 
 ```typescript
@@ -235,5 +235,5 @@ Consider adding:
 
 ---
 
-*Fixed: February 2026*  
+*Fixed: February 2026*
 *Related Issue: Deno lint failing with 59 errors*

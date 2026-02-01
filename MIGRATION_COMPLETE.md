@@ -213,9 +213,9 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ### Improved Experience
 
-✅ **Faster** - No external API calls  
-✅ **More reliable** - Slack's 99.99% SLA  
-✅ **Better integrated** - Everything in Slack  
+✅ **Faster** - No external API calls
+✅ **More reliable** - Slack's 99.99% SLA
+✅ **Better integrated** - Everything in Slack
 ✅ **More transparent** - ADRs visible in Slack threads
 
 ## Operational Benefits
@@ -264,8 +264,8 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ### Vendor Lock-in
 
-**Risk**: Tightly coupled to Slack platform  
-**Mitigation**: 
+**Risk**: Tightly coupled to Slack platform
+**Mitigation**:
 - Core business logic in portable TypeScript
 - Datastore export APIs available
 - Could rebuild on another platform if needed
@@ -273,7 +273,7 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ### Platform Limitations
 
-**Risk**: 30-second function timeout, 1GB Datastore limit  
+**Risk**: 30-second function timeout, 1GB Datastore limit
 **Mitigation**:
 - Current operations complete in <3 seconds
 - 1GB = ~10,000 decisions (200 years at current volume)
@@ -281,7 +281,7 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ### Learning Curve
 
-**Risk**: Team needs to learn Deno and Slack SDK  
+**Risk**: Team needs to learn Deno and Slack SDK
 **Mitigation**:
 - TypeScript skills transfer directly
 - 80% API compatibility with Node.js
@@ -290,11 +290,11 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ## Success Criteria
 
-✅ **Cost reduction**: 85-90% achieved  
-✅ **Operational simplification**: 85% less maintenance  
-✅ **Feature parity**: 100% of core features preserved  
-✅ **Deployment simplification**: 75% fewer steps  
-✅ **Security improvement**: Zero secrets to rotate  
+✅ **Cost reduction**: 85-90% achieved
+✅ **Operational simplification**: 85% less maintenance
+✅ **Feature parity**: 100% of core features preserved
+✅ **Deployment simplification**: 75% fewer steps
+✅ **Security improvement**: Zero secrets to rotate
 ✅ **User experience**: Unchanged for end users
 
 ## Next Steps
@@ -357,12 +357,13 @@ The migration to Slack Native (ROSI) architecture has been successfully complete
 - **Improved security** (zero secret rotation burden)
 - **Better user experience** (native Slack integration)
 
-This represents a significant architectural improvement that positions ConsensusBot for sustainable long-term operation with minimal overhead.
+This represents a significant architectural improvement that positions
+ConsensusBot for sustainable long-term operation with minimal overhead.
 
 **Status**: ✅ **Complete and Ready for Deployment**
 
 ---
 
-*Migration completed: February 2026*  
-*Total effort: ~40 hours over 5 weeks*  
-*ROI: 60% Year 1, 160% Year 2+*
+_Migration completed: February 2026_\
+_Total effort: ~40 hours over 5 weeks_\
+_ROI: 60% Year 1, 160% Year 2+_

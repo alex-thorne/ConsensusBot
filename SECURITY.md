@@ -2,7 +2,7 @@
 
 ## CodeQL Security Scan Results
 
-**Date**: February 1, 2026  
+**Date**: February 1, 2026
 **Status**: ✅ **PASSED - No vulnerabilities detected**
 
 ### Analysis Details
@@ -119,6 +119,6 @@ For security concerns or vulnerability reports:
 
 ---
 
-**Security Status**: ✅ **APPROVED**  
-**Last Scanned**: February 1, 2026  
+**Security Status**: ✅ **APPROVED**
+**Last Scanned**: February 1, 2026
 **Next Review**: May 1, 2026 (quarterly)

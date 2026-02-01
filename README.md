@@ -21,11 +21,11 @@ ConsensusBot uses a **100% Slack-native architecture** powered by Run on Slack I
 
 ### Key Benefits
 
-✅ **Zero Infrastructure**: No servers, databases, or external services to manage  
-✅ **90% Cost Reduction**: $10-50/month vs $171-266/month for Azure-based architecture  
-✅ **85% Less Maintenance**: 1-2 hours/month vs 8-12 hours/month  
-✅ **No Secret Rotation**: Slack handles all authentication automatically  
-✅ **Auto-Scaling**: Platform handles load automatically  
+✅ **Zero Infrastructure**: No servers, databases, or external services to manage
+✅ **90% Cost Reduction**: $10-50/month vs $171-266/month for Azure-based architecture
+✅ **85% Less Maintenance**: 1-2 hours/month vs 8-12 hours/month
+✅ **No Secret Rotation**: Slack handles all authentication automatically
+✅ **Auto-Scaling**: Platform handles load automatically
 ✅ **Built-in Compliance**: SOC 2 Type II, ISO 27001 certified
 
 ## Features
@@ -155,7 +155,7 @@ A voting message will be posted to the channel with Yes/No/Abstain buttons.
 
 Click one of the voting buttons on the decision message:
 - ✅ **Yes**: Approve the proposal
-- ❌ **No**: Reject the proposal  
+- ❌ **No**: Reject the proposal
 - ⚪ **Abstain**: Abstain from voting
 
 You'll receive an ephemeral confirmation message. You can change your vote at any time before the deadline.

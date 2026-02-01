@@ -1,6 +1,7 @@
 # Contributing to ConsensusBot
 
-Thank you for your interest in contributing to ConsensusBot! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to ConsensusBot! This document
+provides guidelines and instructions for contributing to the project.
 
 ## Table of Contents
 
@@ -16,7 +17,8 @@ Thank you for your interest in contributing to ConsensusBot! This document provi
 
 ## Code of Conduct
 
-By participating in this project, you agree to maintain a respectful and inclusive environment for all contributors.
+By participating in this project, you agree to maintain a respectful and
+inclusive environment for all contributors.
 
 ### Our Standards
 
@@ -38,7 +40,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
    ```bash
    # Install dependencies
    npm install
-   
+
    # Copy environment variables
    cp .env.example .env
    # Edit .env with your Slack credentials
@@ -110,7 +112,8 @@ git commit -m "feat: add new voting mechanism"
 
 #### Commit Message Guidelines
 
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+We follow the [Conventional Commits](https://www.conventionalcommits.org/)
+specification:
 
 - `feat:` New feature
 - `fix:` Bug fix
@@ -121,6 +124,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 - `chore:` Maintenance tasks
 
 Examples:
+
 ```
 feat: add approval voting option
 fix: resolve issue with proposal submission
@@ -167,13 +171,13 @@ function calculateConsensus(proposal, votes) {
 - Aim for high code coverage (minimum 80%)
 
 ```javascript
-describe('ConsensusCalculator', () => {
-  describe('calculateConsensus', () => {
-    it('should return 100 when all votes are in favor', () => {
+describe("ConsensusCalculator", () => {
+  describe("calculateConsensus", () => {
+    it("should return 100 when all votes are in favor", () => {
       // Test implementation
     });
 
-    it('should return 0 when no votes are in favor', () => {
+    it("should return 0 when no votes are in favor", () => {
       // Test implementation
     });
   });
@@ -245,28 +249,25 @@ npm test -- --coverage
 ### Bug Report Template
 
 ```markdown
-**Describe the bug**
-A clear description of what the bug is.
+**Describe the bug** A clear description of what the bug is.
 
-**To Reproduce**
-Steps to reproduce the behavior:
+**To Reproduce** Steps to reproduce the behavior:
+
 1. Go to '...'
 2. Click on '....'
 3. See error
 
-**Expected behavior**
-What you expected to happen.
+**Expected behavior** What you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots.
+**Screenshots** If applicable, add screenshots.
 
 **Environment**
+
 - OS: [e.g., Ubuntu 22.04]
 - Node.js version: [e.g., 18.16.0]
 - ConsensusBot version: [e.g., 0.1.0]
 
-**Additional context**
-Any other relevant information.
+**Additional context** Any other relevant information.
 ```
 
 ## Suggesting Enhancements
@@ -274,17 +275,14 @@ Any other relevant information.
 ### Enhancement Proposal Template
 
 ```markdown
-**Is your feature request related to a problem?**
-A clear description of the problem.
+**Is your feature request related to a problem?** A clear description of the
+problem.
 
-**Describe the solution you'd like**
-What you want to happen.
+**Describe the solution you'd like** What you want to happen.
 
-**Describe alternatives you've considered**
-Alternative solutions or features.
+**Describe alternatives you've considered** Alternative solutions or features.
 
-**Additional context**
-Any other context, mockups, or examples.
+**Additional context** Any other context, mockups, or examples.
 ```
 
 ## Development Tips
@@ -343,6 +341,7 @@ If you have questions:
 ## Recognition
 
 Contributors will be recognized in:
+
 - The project README
 - Release notes
 - GitHub contributors page
