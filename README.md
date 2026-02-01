@@ -10,8 +10,9 @@ ConsensusBot is a Slack application designed to help teams make decisions collab
 
 - 🗳️ **Consensus Building**: Facilitate team decisions with structured voting mechanisms
 - 💬 **Interactive Discussions**: Enable threaded conversations around proposals
-- 📊 **Decision Tracking**: Keep a record of all team decisions
+- 📊 **Slack-Based State Management**: All decision state is maintained in Slack threads and metadata (no external database required)
 - 🔔 **Smart Notifications**: Get notified about pending decisions and updates
+- 📝 **ADR Generation**: Automatically create Architecture Decision Records in Azure DevOps upon decision finalization
 
 ## Prerequisites
 
@@ -82,10 +83,9 @@ Edit `.env` and add your Slack tokens:
 SLACK_BOT_TOKEN=xoxb-your-bot-token
 SLACK_SIGNING_SECRET=your-signing-secret
 SLACK_APP_TOKEN=xapp-your-app-token
-DATABASE_PATH=./data/consensus.db  # Optional: defaults to ./data/consensus.db
 ```
 
-**Note:** The database will be automatically created on first run. No manual database setup is required.
+**Note:** ConsensusBot uses Slack as its persistence layer. All decision state is maintained in Slack threads and metadata. No external database setup is required.
 
 ### 5. Run the Application
 
@@ -121,6 +121,33 @@ To stop the container:
 ```bash
 npm run docker:down
 ```
+
+## Architecture
+
+ConsensusBot uses a **Slack-first architecture** for state management:
+
+### State Management
+- **Ephemeral State**: All decision state during the voting lifecycle is maintained in Slack
+  - Pinned messages in channels represent active decisions
+  - Thread replies track individual votes with metadata
+  - Slack message metadata stores decision details (voters, criteria, deadline)
+  - No external database required for decision management
+
+### Persistence Layer
+- **Slack Threads**: Vote records and decision progress are stored in threaded messages
+- **Pinned Messages**: Active decisions are pinned for easy discovery
+- **Message Metadata**: Decision configuration and state stored in Slack's metadata API
+
+### Finalized Decisions
+- **Azure DevOps Integration**: Approved decisions are converted to ADRs (Architecture Decision Records)
+- **Repository Storage**: ADRs are committed to Azure DevOps repositories for permanent record-keeping
+- **Path Format**: `KB.ProcessDocs/decisions/YYYY-MM-DD-decision-name.md`
+
+This architecture ensures:
+- ✅ No database setup or maintenance required
+- ✅ State reconstruction from Slack threads
+- ✅ All decision history visible in Slack
+- ✅ Permanent record in Azure DevOps for finalized decisions
 
 ## Development
 
@@ -171,6 +198,10 @@ ConsensusBot/
 │   ├── modals/             # Modal definitions
 │   │   └── consensusModal.js
 │   ├── utils/              # Utility modules
+│   │   ├── slackState.js   # Slack-based state management
+│   │   ├── reminder.js     # Voter reminder system (Nudger)
+│   │   ├── finalization.js # Decision finalization logic
+│   │   ├── azureDevOps.js  # Azure DevOps ADR integration
 │   │   └── logger.js       # Structured logging
 │   └── index.js            # Main entry point
 ├── terraform/               # Infrastructure as Code
@@ -267,7 +298,7 @@ The main command to interact with ConsensusBot.
 5. A voting message will be posted to the channel with Yes/No/Abstain buttons
 6. The message will be automatically pinned for visibility
 7. Team members can cast their votes by clicking the buttons
-8. Votes are recorded in the database and can be changed until the deadline
+8. Votes are recorded in Slack thread metadata and can be changed until the deadline
 
 ### Features Currently Available
 
