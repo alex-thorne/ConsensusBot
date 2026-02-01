@@ -1,0 +1,47 @@
+name: Deno Type Check
+
+# Run TypeScript type checking on pull requests and pushes to development branch
+on:
+  push:
+    branches: [development]
+  pull_request:
+    branches: [development]
+
+jobs:
+  typecheck:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Deno environment
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      # Cache Deno dependencies
+      - name: Cache Deno dependencies
+        run: deno cache manifest.ts
+
+      # Run type check on all TypeScript files
+      - name: Type check manifest
+        run: deno check manifest.ts
+
+      # Type check all functions
+      - name: Type check functions
+        run: |
+          deno check functions/*.ts
+
+      # Type check all workflows
+      - name: Type check workflows
+        run: |
+          deno check workflows/*.ts
+
+      # Type check all utilities
+      - name: Type check utilities
+        run: |
+          deno check utils/*.ts

@@ -1,0 +1,22 @@
+{
+  "tasks": {
+    "start": "deno run --allow-all --watch=static/,routes/ dev.ts"
+  },
+  "imports": {
+    "deno-slack-sdk/": "https://deno.land/x/deno_slack_sdk@2.7.0/",
+    "deno-slack-api/": "https://deno.land/x/deno_slack_api@2.3.0/"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["deno.window", "deno.ns"],
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment"
+  },
+  "lint": {
+    "exclude": ["archive/"]
+  },
+  "fmt": {
+    "exclude": ["archive/"]
+  }
+}
