@@ -9,7 +9,7 @@ import {
 } from "../utils/adr_generator.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
 import { SlackClient } from "../types/slack_types.ts";
-import { DecisionRecord } from "../types/decision_types.ts";
+import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
 
 /**
  * Function to record a vote on a decision
@@ -203,7 +203,7 @@ async function finalizeDecision(
     return;
   }
 
-  const votes = votesResponse.items;
+  const votes = votesResponse.items as unknown as VoteRecord[];
 
   // Get required voters count
   const votersResponse = await client.apps.datastore.query({
@@ -293,10 +293,10 @@ async function finalizeDecision(
   // Get user names for ADR
   const userMap = new Map<string, string>();
   for (const vote of votes) {
-    const userInfo = await client.users.info({ user: vote.user_id });
+    const userInfo = await client.users.info({ user: vote.user_id as string });
     if (userInfo.ok && userInfo.user) {
       userMap.set(
-        vote.user_id,
+        vote.user_id as string,
         userInfo.user.real_name || userInfo.user.name || "Unknown User",
       );
     }

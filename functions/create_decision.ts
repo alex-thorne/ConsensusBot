@@ -192,18 +192,17 @@ export default SlackFunction(
       channel: inputs.channel_id,
       ts: message_ts,
       text: `New Decision: ${inputs.decision_name}`,
-      blocks: message.message?.blocks?.map((block) => {
-        const typedBlock = block as SlackBlock;
-        if (typedBlock.type === "actions") {
+      blocks: message.message?.blocks?.map((block: SlackBlock) => {
+        if (block.type === "actions") {
           return {
-            ...typedBlock,
-            elements: typedBlock.elements?.map((element) => ({
+            ...block,
+            elements: block.elements?.map((element) => ({
               ...element,
               value: decision_id,
             })),
           };
         }
-        return typedBlock;
+        return block;
       }),
     });
 
