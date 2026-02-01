@@ -29,7 +29,7 @@ const CreateDecisionWorkflow = DefineWorkflow({
 const decisionForm = CreateDecisionWorkflow.addStep(
   Schema.slack.functions.OpenForm,
   {
-    title: "Create Consensus Decision",
+    title: "New Consensus Decision",
     interactivity: CreateDecisionWorkflow.inputs.interactivity,
     submit_label: "Create Decision",
     fields: {
