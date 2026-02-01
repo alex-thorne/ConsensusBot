@@ -23,22 +23,6 @@ interface DecisionItem {
   [key: string]: unknown;
 }
 
-interface SlackClient {
-  apps: {
-    datastore: {
-      query: (params: Record<string, unknown>) => Promise<{
-        ok: boolean;
-        items: unknown[];
-      }>;
-    };
-  };
-  chat: {
-    postMessage: (params: Record<string, unknown>) => Promise<{
-      ok: boolean;
-    }>;
-  };
-}
-
 /**
  * Function to send reminders to voters who haven't voted
  */
@@ -142,7 +126,8 @@ export default SlackFunction(
  * Send a reminder DM to a voter
  */
 async function sendReminderDM(
-  client: SlackClient,
+  // deno-lint-ignore no-explicit-any
+  client: any,
   userId: string,
   decision: DecisionItem,
 ): Promise<boolean> {

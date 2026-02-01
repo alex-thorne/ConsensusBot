@@ -6,50 +6,7 @@ import { calculateDecisionOutcome } from "../utils/decision_logic.ts";
 import { generateADRMarkdown, formatADRForSlack } from "../utils/adr_generator.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
 
-// Type definitions for Slack API
-interface SlackClient {
-  apps: {
-    datastore: {
-      get: (params: Record<string, unknown>) => Promise<{
-        ok: boolean;
-        item?: Record<string, unknown>;
-      }>;
-      put: (params: Record<string, unknown>) => Promise<{
-        ok: boolean;
-      }>;
-      query: (params: Record<string, unknown>) => Promise<{
-        ok: boolean;
-        items: unknown[];
-      }>;
-    };
-  };
-  chat: {
-    postEphemeral: (params: Record<string, unknown>) => Promise<{
-      ok: boolean;
-    }>;
-    update: (params: Record<string, unknown>) => Promise<{
-      ok: boolean;
-    }>;
-    postMessage: (params: Record<string, unknown>) => Promise<{
-      ok: boolean;
-    }>;
-  };
-  pins: {
-    remove: (params: Record<string, unknown>) => Promise<{
-      ok: boolean;
-    }>;
-  };
-  users: {
-    info: (params: { user: string }) => Promise<{
-      ok: boolean;
-      user?: {
-        real_name?: string;
-        name?: string;
-      };
-    }>;
-  };
-}
-
+// Type definitions for Decision data
 interface DecisionRecord {
   id: string;
   name: string;
@@ -189,7 +146,8 @@ export default SlackFunction(
  * Check if decision should be finalized
  */
 async function checkIfShouldFinalize(
-  client: SlackClient,
+  // deno-lint-ignore no-explicit-any
+  client: any,
   decision_id: string,
   deadline: string
 ): Promise<boolean> {
@@ -224,7 +182,8 @@ async function checkIfShouldFinalize(
  * Finalize a decision and generate ADR
  */
 async function finalizeDecision(
-  client: SlackClient,
+  // deno-lint-ignore no-explicit-any
+  client: any,
   decision: DecisionRecord,
   channel_id: string,
   message_ts: string
@@ -325,20 +284,28 @@ async function finalizeDecision(
       },
     ],
   });
-  
+
   // Get user names for ADR
   const userMap = new Map<string, string>();
   for (const vote of votes) {
     const userInfo = await client.users.info({ user: vote.user_id });
-    if (userInfo.ok) {
-      userMap.set(vote.user_id, userInfo.user.real_name || userInfo.user.name);
+    if (userInfo.ok && userInfo.user) {
+      userMap.set(
+        vote.user_id,
+        userInfo.user.real_name || userInfo.user.name || "Unknown User"
+      );
     }
   }
-  
+
   // Generate and post ADR
-  const adrMarkdown = generateADRMarkdown(decision, votes, outcome, userMap);
+  const adrMarkdown = generateADRMarkdown(
+    decision as any, // TODO: Fix type mismatch with Decision interface
+    votes,
+    outcome,
+    userMap
+  );
   const adrBlocks = formatADRForSlack(adrMarkdown);
-  
+
   await client.chat.postMessage({
     channel: channel_id,
     thread_ts: message_ts,
