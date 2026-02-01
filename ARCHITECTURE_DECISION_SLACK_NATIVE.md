@@ -66,7 +66,7 @@ These changes **remove the blocker** that prevented ROSI adoption.
 - 40-60 hours of development time
 - Node.js → Deno refactoring required
 - $9,300 upfront cost
-- **Payback period**: 5-7 months
+- **Payback period**: 7-8 months
 
 #### 2. **Vendor Lock-in**
 - Tight coupling to Slack platform
@@ -127,9 +127,9 @@ Monthly Savings:
   Operations: $1,200 → $300 = $900/month saved
   Total: $1,061-1,116/month saved
 
-Payback Period: $9,300 ÷ $1,088/month = 8.5 months
-ROI Year 1: ($13,056 - $9,300) / $9,300 = 40%
-ROI Year 2+: $13,056 / $9,300 = 140%
+Payback Period: $9,300 ÷ $1,239/month = 7.5 months
+ROI Year 1: ($14,862 - $9,300) / $9,300 = 60%
+ROI Year 2+: $14,862 / $9,300 = 160%
 ```
 
 ### 3-Year TCO Comparison

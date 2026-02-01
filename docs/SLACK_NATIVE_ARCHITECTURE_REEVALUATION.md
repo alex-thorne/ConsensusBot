@@ -113,10 +113,10 @@ Based on PR #10 analysis and current infrastructure:
 
 **ROI on Migration:**
 - Migration effort: ~40-60 hours (AI-assisted refactoring)
-- Migration cost: $6,000-9,000 (at $150/hr)
-- **Payback period**: 5-7 months
-- **Year 1 net savings**: $5,600-11,200
-- **Year 2+ annual savings**: $13,000-15,600
+- Migration cost: $9,300 (62 hours at $150/hr)
+- **Payback period**: 7-8 months
+- **Year 1 net savings**: $5,562 (60% ROI)
+- **Year 2+ annual savings**: $14,862 (160% ROI)
 
 ---
 
@@ -447,9 +447,9 @@ Human pastes into Wiki/Repo
 | Phase 5 | 1 week | 8 hours | $1,200 |
 | **TOTAL** | **7 weeks** | **62 hours** | **$9,300** |
 
-**Payback Period**: 5-7 months  
-**ROI Year 1**: 60-120%  
-**ROI Year 2+**: 150-200%
+**Payback Period**: 7-8 months  
+**ROI Year 1**: 60%  
+**ROI Year 2+**: 160%
 
 ---
 

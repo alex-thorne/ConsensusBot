@@ -16,8 +16,8 @@
 | ⏰ **Monthly Maintenance** | 8-12 hours | 1-2 hours | **85% less** |
 | 📊 **Overall Score** | 7.85/10 | 9.95/10 | **+27% better** |
 
-**Payback Period**: 5-7 months  
-**Year 2+ Annual Savings**: $13,000-15,000  
+**Payback Period**: 7-8 months  
+**Year 2+ Annual Savings**: $14,862  
 **3-Year Total Savings**: $36,276 (69% reduction)
 
 ---
@@ -277,9 +277,9 @@ Week 7: Deployment
 Total: 7 weeks, 62 developer hours, $9,300
 ```
 
-**Payback Period**: 5-7 months  
-**ROI Year 1**: 40%  
-**ROI Year 2+**: 140%
+**Payback Period**: 7-8 months  
+**ROI Year 1**: 60%  
+**ROI Year 2+**: 160%
 
 ---
 
