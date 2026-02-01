@@ -13,7 +13,8 @@ import SendRemindersWorkflow from "./workflows/send_reminders.ts";
  */
 export default Manifest({
   name: "ConsensusBot",
-  description: "Facilitate team decision-making through collaborative consensus building",
+  description:
+    "Facilitate team decision-making through collaborative consensus building",
   icon: "assets/icon.png",
   workflows: [
     CreateDecisionWorkflow,

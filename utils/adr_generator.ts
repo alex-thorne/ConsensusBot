@@ -1,31 +1,19 @@
 /**
  * ADR (Architecture Decision Record) Generator for Slack ROSI
- * 
+ *
  * Generates ADR markdown from finalized decisions for manual archival
  */
 
 import { DecisionResult } from "./decision_logic.ts";
+import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
 
-export interface Decision {
-  id: string;
-  name: string;
-  proposal: string;
-  success_criteria: string;
-  deadline: string;
-  creator_id: string;
-  created_at: string;
-  status: string;
-}
-
-export interface VoteRecord {
-  user_id: string;
-  vote_type: 'yes' | 'no' | 'abstain';
-  voted_at: string;
-}
+// Re-export for backward compatibility
+export type Decision = DecisionRecord;
+export type { VoteRecord };
 
 /**
  * Generate ADR markdown from a finalized decision
- * 
+ *
  * @param decision - Decision object
  * @param votes - Array of vote records
  * @param outcome - Decision outcome result
@@ -36,25 +24,34 @@ export const generateADRMarkdown = (
   decision: Decision,
   votes: VoteRecord[],
   outcome: DecisionResult,
-  userMap: Map<string, string>
+  userMap: Map<string, string>,
 ): string => {
   const createdDate = new Date(decision.created_at);
-  const fileName = `${createdDate.toISOString().split('T')[0]}-${decision.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`;
-  
-  const status = outcome.passed ? 'Accepted' : 'Rejected';
-  const criteriaDisplay = decision.success_criteria.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  
+  const fileName = `${createdDate.toISOString().split("T")[0]}-${
+    decision.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+  }.md`;
+
+  const status = outcome.passed ? "Accepted" : "Rejected";
+  const criteriaDisplay = decision.success_criteria.replace(/_/g, " ").replace(
+    /\b\w/g,
+    (l) => l.toUpperCase(),
+  );
+
   // Build vote summary
-  const voteSummary = votes.map(vote => {
+  const voteSummary = votes.map((vote) => {
     const userName = userMap.get(vote.user_id) || vote.user_id;
-    const voteEmoji = vote.vote_type === 'yes' ? '✅' : vote.vote_type === 'no' ? '❌' : '⚪';
+    const voteEmoji = vote.vote_type === "yes"
+      ? "✅"
+      : vote.vote_type === "no"
+      ? "❌"
+      : "⚪";
     return `- ${voteEmoji} ${userName}: ${vote.vote_type.toUpperCase()}`;
-  }).join('\n');
-  
+  }).join("\n");
+
   const adr = `# ${decision.name}
 
 **Status:** ${status}  
-**Date:** ${createdDate.toISOString().split('T')[0]}  
+**Date:** ${createdDate.toISOString().split("T")[0]}  
 **Decision ID:** ${decision.id}  
 **Success Criteria:** ${criteriaDisplay}
 
@@ -68,7 +65,7 @@ This decision was put to a vote using the **${criteriaDisplay}** consensus crite
 
 ### Voting Results
 
-**Outcome:** ${outcome.passed ? '✅ APPROVED' : '❌ REJECTED'}  
+**Outcome:** ${outcome.passed ? "✅ APPROVED" : "❌ REJECTED"}  
 **Reason:** ${outcome.reason}
 
 **Vote Breakdown:**
@@ -76,7 +73,11 @@ This decision was put to a vote using the **${criteriaDisplay}** consensus crite
 - No: ${outcome.voteCounts.no}
 - Abstain: ${outcome.voteCounts.abstain}
 - Total Votes: ${outcome.voteCounts.total}
-${outcome.requiredVotersCount ? `- Required Voters: ${outcome.requiredVotersCount}` : ''}
+${
+    outcome.requiredVotersCount
+      ? `- Required Voters: ${outcome.requiredVotersCount}`
+      : ""
+  }
 - Percentage: ${outcome.percentage.toFixed(2)}%
 
 ### Individual Votes
@@ -87,15 +88,27 @@ ${voteSummary}
 
 ### If Accepted
 
-${outcome.passed ? 'This decision has been approved and should be implemented as proposed.' : 'N/A - Decision was not approved.'}
+${
+    outcome.passed
+      ? "This decision has been approved and should be implemented as proposed."
+      : "N/A - Decision was not approved."
+  }
 
 ### If Rejected
 
-${!outcome.passed ? 'This decision was rejected. The team may revisit this proposal in the future with modifications or abandon it entirely.' : 'N/A - Decision was approved.'}
+${
+    !outcome.passed
+      ? "This decision was rejected. The team may revisit this proposal in the future with modifications or abandon it entirely."
+      : "N/A - Decision was approved."
+  }
 
 ## Implementation Notes
 
-${outcome.passed ? 'Teams should proceed with implementing the proposal as described in the Context section.' : 'No implementation required as decision was rejected.'}
+${
+    outcome.passed
+      ? "Teams should proceed with implementing the proposal as described in the Context section."
+      : "No implementation required as decision was rejected."
+  }
 
 ## References
 
@@ -115,7 +128,7 @@ ${outcome.passed ? 'Teams should proceed with implementing the proposal as descr
 
 /**
  * Format ADR for posting in Slack thread
- * 
+ *
  * @param adrMarkdown - ADR markdown string
  * @returns Formatted Slack message blocks
  */
@@ -125,24 +138,26 @@ export const formatADRForSlack = (adrMarkdown: string) => {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: "📝 *Architecture Decision Record Generated*\n\nThe decision has been finalized. Below is the ADR markdown that can be copied to your documentation repository:"
-      }
+        text:
+          "📝 *Architecture Decision Record Generated*\n\nThe decision has been finalized. Below is the ADR markdown that can be copied to your documentation repository:",
+      },
     },
     {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: "```\n" + adrMarkdown + "\n```"
-      }
+        text: "```\n" + adrMarkdown + "\n```",
+      },
     },
     {
       type: "context",
       elements: [
         {
           type: "mrkdwn",
-          text: "💡 *To archive this ADR:* Copy the markdown above and paste it into your team's documentation repository or wiki."
-        }
-      ]
-    }
+          text:
+            "💡 *To archive this ADR:* Copy the markdown above and paste it into your team's documentation repository or wiki.",
+        },
+      ],
+    },
   ];
 };

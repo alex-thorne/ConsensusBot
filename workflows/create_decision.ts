@@ -89,7 +89,12 @@ const decisionForm = CreateDecisionWorkflow.addStep(
           description: "Date by which votes must be cast (YYYY-MM-DD)",
         },
       ],
-      required: ["decision_name", "proposal", "required_voters", "success_criteria"],
+      required: [
+        "decision_name",
+        "proposal",
+        "required_voters",
+        "success_criteria",
+      ],
     },
   },
 );

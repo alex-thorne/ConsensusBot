@@ -1,16 +1,21 @@
 # ConsensusBot - Slack Native (ROSI)
 
-A Slack App to facilitate team decision-making through collaborative consensus building, built entirely on Slack's Run on Slack Infrastructure (ROSI).
+A Slack App to facilitate team decision-making through collaborative consensus
+building, built entirely on Slack's Run on Slack Infrastructure (ROSI).
 
 ## Overview
 
-ConsensusBot is a native Slack application that helps teams make decisions collaboratively using structured voting mechanisms, automated reminders, and automatic generation of Architecture Decision Records (ADRs). The application runs entirely on Slack's infrastructure with zero external dependencies.
+ConsensusBot is a native Slack application that helps teams make decisions
+collaboratively using structured voting mechanisms, automated reminders, and
+automatic generation of Architecture Decision Records (ADRs). The application
+runs entirely on Slack's infrastructure with zero external dependencies.
 
 ## Architecture
 
 ### Slack Native (ROSI) Design
 
-ConsensusBot uses a **100% Slack-native architecture** powered by Run on Slack Infrastructure (ROSI):
+ConsensusBot uses a **100% Slack-native architecture** powered by Run on Slack
+Infrastructure (ROSI):
 
 - **Compute**: Deno runtime hosted on Slack's serverless platform
 - **State Management**: Slack Datastores (DynamoDB-backed, fully managed)
@@ -21,31 +26,37 @@ ConsensusBot uses a **100% Slack-native architecture** powered by Run on Slack I
 
 ### Key Benefits
 
-✅ **Zero Infrastructure**: No servers, databases, or external services to manage
-✅ **90% Cost Reduction**: $10-50/month vs $171-266/month for Azure-based architecture
-✅ **85% Less Maintenance**: 1-2 hours/month vs 8-12 hours/month
-✅ **No Secret Rotation**: Slack handles all authentication automatically
-✅ **Auto-Scaling**: Platform handles load automatically
-✅ **Built-in Compliance**: SOC 2 Type II, ISO 27001 certified
+✅ **Zero Infrastructure**: No servers, databases, or external services to
+manage ✅ **90% Cost Reduction**: $10-50/month vs $171-266/month for Azure-based
+architecture ✅ **85% Less Maintenance**: 1-2 hours/month vs 8-12 hours/month ✅
+**No Secret Rotation**: Slack handles all authentication automatically ✅
+**Auto-Scaling**: Platform handles load automatically ✅ **Built-in
+Compliance**: SOC 2 Type II, ISO 27001 certified
 
 ## Features
 
-- 🗳️ **Consensus Building**: Facilitate team decisions with three voting thresholds:
+- 🗳️ **Consensus Building**: Facilitate team decisions with three voting
+  thresholds:
   - **Simple Majority** (>50% of votes must be yes)
   - **Supermajority** (≥66% of required voters must vote yes)
   - **Unanimity** (All votes must be yes, abstentions allowed)
 - 💬 **Interactive Voting**: Block Kit buttons for Yes/No/Abstain votes
 - 📊 **Slack Datastores**: All decision state maintained in managed datastores
-- 🔔 **Automated Reminders**: Scheduled DMs to voters who haven't voted (Mon-Fri at 9 AM)
-- 📝 **ADR Generation**: Automatic Architecture Decision Records posted to Slack for manual archival
-- ⏰ **Deadline Enforcement**: Automatic decision finalization when all votes are in or deadline passes
+- 🔔 **Automated Reminders**: Scheduled DMs to voters who haven't voted (Mon-Fri
+  at 9 AM)
+- 📝 **ADR Generation**: Automatic Architecture Decision Records posted to Slack
+  for manual archival
+- ⏰ **Deadline Enforcement**: Automatic decision finalization when all votes
+  are in or deadline passes
 
 ## Prerequisites
 
 Before you begin, ensure you have:
 
-- **Deno** (v1.37 or higher) - [Install Deno](https://deno.land/manual/getting_started/installation)
-- **Slack CLI** - [Install Slack CLI](https://api.slack.com/automation/cli/install)
+- **Deno** (v1.37 or higher) -
+  [Install Deno](https://deno.land/manual/getting_started/installation)
+- **Slack CLI** -
+  [Install Slack CLI](https://api.slack.com/automation/cli/install)
 - A **Slack Workspace** where you have admin permissions
 - **Slack paid plan** (required for ROSI features)
 
@@ -60,7 +71,9 @@ cd ConsensusBot
 
 ### 2. Install Slack CLI
 
-Follow the [official installation guide](https://api.slack.com/automation/cli/install) for your platform:
+Follow the
+[official installation guide](https://api.slack.com/automation/cli/install) for
+your platform:
 
 ```bash
 # macOS
@@ -97,7 +110,8 @@ Select your workspace when prompted.
 
 ### 5. Install Dependencies
 
-The Deno runtime will automatically fetch dependencies on first run. No manual installation needed!
+The Deno runtime will automatically fetch dependencies on first run. No manual
+installation needed!
 
 ### 6. Deploy to Slack
 
@@ -108,6 +122,7 @@ slack deploy
 ```
 
 This will:
+
 - Deploy all workflows and functions to Slack's infrastructure
 - Create the required Datastores
 - Set up triggers (slash command and scheduled reminders)
@@ -154,19 +169,23 @@ A voting message will be posted to the channel with Yes/No/Abstain buttons.
 ### Voting on a Decision
 
 Click one of the voting buttons on the decision message:
+
 - ✅ **Yes**: Approve the proposal
 - ❌ **No**: Reject the proposal
 - ⚪ **Abstain**: Abstain from voting
 
-You'll receive an ephemeral confirmation message. You can change your vote at any time before the deadline.
+You'll receive an ephemeral confirmation message. You can change your vote at
+any time before the deadline.
 
 ### Decision Finalization
 
 Decisions are automatically finalized when:
+
 - All required voters have cast their votes, OR
 - The deadline is reached
 
 When finalized:
+
 1. The decision message is updated with the final result
 2. The message is unpinned
 3. An ADR (Architecture Decision Record) is posted in the thread
@@ -175,6 +194,7 @@ When finalized:
 ### Voter Reminders
 
 Every weekday at 9:00 AM UTC, the bot automatically:
+
 1. Checks all active decisions
 2. Identifies voters who haven't voted
 3. Sends them a DM reminder with a link to the decision
@@ -189,7 +209,8 @@ Run the app locally for testing:
 slack run
 ```
 
-This starts a local development server that connects to your Slack workspace via Socket Mode.
+This starts a local development server that connects to your Slack workspace via
+Socket Mode.
 
 ### View Logs
 
@@ -223,7 +244,8 @@ slack env list
 
 ### Code Quality & CI
 
-The project uses GitHub Actions for continuous integration with Deno-based checks:
+The project uses GitHub Actions for continuous integration with Deno-based
+checks:
 
 **Run checks locally:**
 
@@ -245,6 +267,7 @@ deno check utils/*.ts
 ```
 
 **CI Workflows:**
+
 - **deno-lint.yml**: Linting and formatting validation
 - **deno-check.yml**: TypeScript type checking
 - **slack-validate.yml**: Slack manifest validation
@@ -285,6 +308,7 @@ ConsensusBot/
 ### Decisions Datastore
 
 Stores decision metadata:
+
 - `id`: Decision ID (message timestamp)
 - `name`: Decision title
 - `proposal`: Proposal description
@@ -299,6 +323,7 @@ Stores decision metadata:
 ### Votes Datastore
 
 Stores individual votes:
+
 - `id`: Vote ID (decision_id + user_id)
 - `decision_id`: Related decision
 - `user_id`: User who voted
@@ -308,6 +333,7 @@ Stores individual votes:
 ### Voters Datastore
 
 Stores required voters:
+
 - `id`: Voter ID (decision_id + user_id)
 - `decision_id`: Related decision
 - `user_id`: Required voter
@@ -316,9 +342,11 @@ Stores required voters:
 
 ## Migration from Azure
 
-This application has been migrated from an Azure-based architecture to Slack Native (ROSI). Key changes:
+This application has been migrated from an Azure-based architecture to Slack
+Native (ROSI). Key changes:
 
 ### Removed
+
 - ❌ Azure App Service
 - ❌ Azure Functions (Timer triggers)
 - ❌ Azure Key Vault
@@ -328,6 +356,7 @@ This application has been migrated from an Azure-based architecture to Slack Nat
 - ❌ Docker containers
 
 ### Added
+
 - ✅ Deno runtime on Slack ROSI
 - ✅ Slack Datastores
 - ✅ Slack Workflows and Functions
@@ -335,6 +364,7 @@ This application has been migrated from an Azure-based architecture to Slack Nat
 - ✅ Manual ADR workflow (markdown posted to Slack)
 
 ### Benefits
+
 - 90% cost reduction ($10-50/mo vs $171-266/mo)
 - 85% less maintenance (1-2 hrs/mo vs 8-12 hrs/mo)
 - Zero secret management overhead
@@ -344,25 +374,29 @@ This application has been migrated from an Azure-based architecture to Slack Nat
 ## Cost Estimate
 
 ### Low Volume (<50 decisions/month)
+
 - Workflow executions: $5-15/month
 - Datastore operations: $5-10/month
 - Scheduled triggers: $10-15/month
 - **Total: $20-40/month**
 
 ### Medium Volume (50-200 decisions/month)
+
 - Workflow executions: $15-30/month
 - Datastore operations: $10-20/month
 - Scheduled triggers: $10-15/month
 - **Total: $35-65/month**
 
-*Note: Costs may be included in Enterprise Grid plans at no additional charge.*
+_Note: Costs may be included in Enterprise Grid plans at no additional charge._
 
 ## Documentation
 
 Additional documentation:
 
-- [Architecture Re-evaluation](docs/SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md) - Detailed analysis of migration decision
-- [Slack Automation Documentation](https://api.slack.com/automation) - Official Slack automation docs
+- [Architecture Re-evaluation](docs/SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md) -
+  Detailed analysis of migration decision
+- [Slack Automation Documentation](https://api.slack.com/automation) - Official
+  Slack automation docs
 - [Deno Manual](https://deno.land/manual) - Deno runtime documentation
 
 ## Troubleshooting
@@ -381,7 +415,8 @@ Additional documentation:
 
 ### Datastores not working
 
-Ensure your Slack plan supports Datastores (requires paid plan). Check datastore status:
+Ensure your Slack plan supports Datastores (requires paid plan). Check datastore
+status:
 
 ```bash
 slack datastore list
@@ -405,7 +440,8 @@ slack activity --tail
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for
+guidelines.
 
 ## License
 
@@ -422,6 +458,7 @@ For questions or issues:
 ## Roadmap
 
 ### Completed ✅
+
 - [x] Slack Native ROSI migration
 - [x] Datastore-based state management
 - [x] Automated voter reminders
@@ -430,6 +467,7 @@ For questions or issues:
 - [x] Deadline enforcement
 
 ### Future Enhancements 🚧
+
 - [ ] Multi-channel support
 - [ ] Decision templates
 - [ ] Analytics dashboard

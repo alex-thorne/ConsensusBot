@@ -3,13 +3,15 @@
 All notable changes to the ConsensusBot project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ## [2.0.0] - 2026-02-01
 
 ### BREAKING CHANGES
+
 - **Complete migration to Slack Native (ROSI) architecture**
 - Removed all Azure dependencies (App Service, Functions, Key Vault, SQL)
 - Removed Node.js runtime in favor of Deno
@@ -17,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed Docker deployment option
 
 ### Added
+
 - **Slack Native (ROSI) Infrastructure**
   - Deno-based runtime on Slack's serverless platform
   - Slack Datastores for state management (decisions, votes, voters)
@@ -41,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Architecture re-evaluation document
 
 ### Changed
+
 - **Simplified ADR Workflow**
   - Removed Azure DevOps automated push integration
   - ADRs now posted as formatted markdown in Slack threads
@@ -54,7 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - No database setup or management needed
 
 ### Removed
-- Azure infrastructure (App Service, Functions, Key Vault, Storage, Application Insights)
+
+- Azure infrastructure (App Service, Functions, Key Vault, Storage, Application
+  Insights)
 - Terraform configurations and state management
 - Node.js/npm dependencies and package.json
 - Docker deployment (Dockerfile, docker-compose.yml)
@@ -63,12 +69,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All Node.js source code (src/, azure-functions/, config/)
 
 ### Archived
+
 - Old Azure-based implementation moved to `archive/old-azure-architecture/`
-- All Node.js tests, infrastructure code, and documentation preserved for reference
+- All Node.js tests, infrastructure code, and documentation preserved for
+  reference
 
 ## [1.0.0] - 2026-01-31
 
 ### Azure-Based Implementation (Now Archived)
+
 - Complete Node.js implementation with Azure infrastructure
 - SQLite database for ephemeral state (later migrated to Slack-based state)
 - Azure Functions for scheduled reminders
@@ -79,7 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-01-31
 
 ### Initial Release
+
 ### Added
+
 - Initial project foundation and structure
 - Foundational directory structure (src, config, docs, terraform, test)
 - Core configuration files (.gitignore, .dockerignore, .eslintrc.json)
@@ -113,6 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-01-31
 
 ### Initial Release
+
 - Project foundation established
 - Development environment configured
 - Documentation framework in place

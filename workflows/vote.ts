@@ -33,7 +33,13 @@ const VoteWorkflow = DefineWorkflow({
         description: "Timestamp of the voting message",
       },
     },
-    required: ["decision_id", "vote_type", "user_id", "channel_id", "message_ts"],
+    required: [
+      "decision_id",
+      "vote_type",
+      "user_id",
+      "channel_id",
+      "message_ts",
+    ],
   },
 });
 

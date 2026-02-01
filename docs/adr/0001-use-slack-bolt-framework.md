@@ -6,7 +6,8 @@ Accepted
 
 ## Context
 
-ConsensusBot is a Slack application designed to facilitate team decision-making. We need to choose a framework for building the Slack bot that will:
+ConsensusBot is a Slack application designed to facilitate team decision-making.
+We need to choose a framework for building the Slack bot that will:
 
 - Handle Slack API interactions reliably
 - Support modern Slack features (modals, blocks, shortcuts)
@@ -16,14 +17,17 @@ ConsensusBot is a Slack application designed to facilitate team decision-making.
 
 ## Decision
 
-We will use the **Slack Bolt Framework for JavaScript** (@slack/bolt) as the foundation for building ConsensusBot.
+We will use the **Slack Bolt Framework for JavaScript** (@slack/bolt) as the
+foundation for building ConsensusBot.
 
 ## Consequences
 
 ### Positive
 
-- **Official Support**: Maintained by Slack, ensuring compatibility with new features
-- **Modern API**: Built-in support for Block Kit, modals, shortcuts, and interactive components
+- **Official Support**: Maintained by Slack, ensuring compatibility with new
+  features
+- **Modern API**: Built-in support for Block Kit, modals, shortcuts, and
+  interactive components
 - **Socket Mode**: Enables local development without exposing public endpoints
 - **Excellent Documentation**: Comprehensive guides and examples
 - **Active Community**: Large community and regular updates
@@ -32,7 +36,8 @@ We will use the **Slack Bolt Framework for JavaScript** (@slack/bolt) as the fou
 
 ### Negative
 
-- **Framework Lock-in**: Tied to Slack's ecosystem (acceptable for a Slack-specific bot)
+- **Framework Lock-in**: Tied to Slack's ecosystem (acceptable for a
+  Slack-specific bot)
 - **Learning Curve**: Developers must learn Bolt-specific patterns
 - **Node.js Only**: Limits language choice to JavaScript/TypeScript
 
@@ -46,40 +51,43 @@ We will use the **Slack Bolt Framework for JavaScript** (@slack/bolt) as the fou
 ### Alternative 1: Custom Implementation with Slack Web API
 
 - **Description**: Build directly on top of Slack's Web API and Events API
-- **Pros**: 
+- **Pros**:
   - Complete control over implementation
   - No framework dependencies
   - Can optimize for specific use cases
-- **Cons**: 
+- **Cons**:
   - Significant development overhead
   - Need to handle authentication, verification, and event routing manually
   - More maintenance burden
   - Reinventing the wheel
-- **Reason for rejection**: Not worth the development effort when a well-maintained framework exists
+- **Reason for rejection**: Not worth the development effort when a
+  well-maintained framework exists
 
 ### Alternative 2: Botkit
 
 - **Description**: Use Botkit framework for building bots
-- **Pros**: 
+- **Pros**:
   - Multi-platform support (Slack, Teams, etc.)
   - Rich conversation flows
-- **Cons**: 
+- **Cons**:
   - Less focused on Slack-specific features
   - Smaller community than Bolt
   - Not officially maintained by Slack
-- **Reason for rejection**: Bolt is the official framework and better suited for Slack-only applications
+- **Reason for rejection**: Bolt is the official framework and better suited for
+  Slack-only applications
 
 ### Alternative 3: Hubot
 
 - **Description**: Use GitHub's Hubot framework
-- **Pros**: 
+- **Pros**:
   - Proven track record
   - Many existing scripts
-- **Cons**: 
+- **Cons**:
   - Older framework, less actively maintained
   - Not optimized for modern Slack features
   - CoffeeScript heritage (though JavaScript supported)
-- **Reason for rejection**: Bolt is more modern and better aligned with current Slack capabilities
+- **Reason for rejection**: Bolt is more modern and better aligned with current
+  Slack capabilities
 
 ## Implementation Notes
 

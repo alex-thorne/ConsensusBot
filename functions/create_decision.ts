@@ -2,19 +2,7 @@ import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
 import DecisionDatastore from "../datastores/decisions.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { getDefaultDeadline } from "../utils/date_utils.ts";
-
-// Type definitions for Block Kit elements
-interface BlockElement {
-  type: string;
-  value?: string;
-  [key: string]: unknown;
-}
-
-interface Block {
-  type: string;
-  elements?: BlockElement[];
-  [key: string]: unknown;
-}
+import { SlackBlock } from "../types/slack_types.ts";
 
 /**
  * Function to create a new decision and post voting message
@@ -87,16 +75,16 @@ export default SlackFunction(
   async ({ inputs, client }) => {
     const now = new Date().toISOString();
     const deadline = inputs.deadline || getDefaultDeadline();
-    
+
     // Post voting message to channel
     const criteriaDisplay = inputs.success_criteria
-      .replace(/_/g, ' ')
+      .replace(/_/g, " ")
       .replace(/\b\w/g, (l: string) => l.toUpperCase());
-    
+
     const votersMentions = inputs.required_voters
       .map((userId: string) => `<@${userId}>`)
-      .join(', ');
-    
+      .join(", ");
+
     const message = await client.chat.postMessage({
       channel: inputs.channel_id,
       text: `New Decision: ${inputs.decision_name}`,
@@ -189,23 +177,23 @@ export default SlackFunction(
         },
       ],
     });
-    
+
     if (!message.ok) {
       return {
         error: `Failed to post message: ${message.error}`,
       };
     }
-    
+
     const decision_id = message.ts as string;
     const message_ts = message.ts as string;
-    
+
     // Update button values with actual decision_id
     await client.chat.update({
       channel: inputs.channel_id,
       ts: message_ts,
       text: `New Decision: ${inputs.decision_name}`,
       blocks: message.message?.blocks?.map((block) => {
-        const typedBlock = block as Block;
+        const typedBlock = block as SlackBlock;
         if (typedBlock.type === "actions") {
           return {
             ...typedBlock,
@@ -218,13 +206,13 @@ export default SlackFunction(
         return typedBlock;
       }),
     });
-    
+
     // Pin the message
     await client.pins.add({
       channel: inputs.channel_id,
       timestamp: message_ts,
     });
-    
+
     // Store decision in datastore
     const putDecision = await client.apps.datastore.put({
       datastore: DecisionDatastore.name,
@@ -242,13 +230,13 @@ export default SlackFunction(
         updated_at: now,
       },
     });
-    
+
     if (!putDecision.ok) {
       return {
         error: `Failed to store decision: ${putDecision.error}`,
       };
     }
-    
+
     // Store required voters
     for (const voter_id of inputs.required_voters) {
       const putVoter = await client.apps.datastore.put({
@@ -261,12 +249,12 @@ export default SlackFunction(
           created_at: now,
         },
       });
-      
+
       if (!putVoter.ok) {
         console.error(`Failed to store voter ${voter_id}: ${putVoter.error}`);
       }
     }
-    
+
     return {
       outputs: {
         decision_id: decision_id,

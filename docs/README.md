@@ -1,6 +1,7 @@
 # ConsensusBot Documentation
 
-This directory contains comprehensive documentation for ConsensusBot (Slack Native / ROSI).
+This directory contains comprehensive documentation for ConsensusBot (Slack
+Native / ROSI).
 
 ## Directory Structure
 
@@ -15,33 +16,39 @@ docs/
 ## Getting Started
 
 - **Main README**: See [../README.md](../README.md) for deployment instructions
-- **Migration Guide**: See [../MIGRATION_GUIDE.md](../MIGRATION_GUIDE.md) for migrating from Azure
+- **Migration Guide**: See [../MIGRATION_GUIDE.md](../MIGRATION_GUIDE.md) for
+  migrating from Azure
 - **Slack CLI**: [Install guide](https://api.slack.com/automation/cli/install)
 
 ## Architecture Documentation
 
 ### Slack Native (ROSI) Architecture
 
-- [Slack Native Architecture Re-evaluation](SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md) - Comprehensive analysis of the migration decision from Azure to Slack ROSI
-- [Main README](../README.md) - Overview of Slack Native architecture and features
+- [Slack Native Architecture Re-evaluation](SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md) -
+  Comprehensive analysis of the migration decision from Azure to Slack ROSI
+- [Main README](../README.md) - Overview of Slack Native architecture and
+  features
 - [Migration Guide](../MIGRATION_GUIDE.md) - Step-by-step migration from Azure
 
 ### Key Benefits
 
-✅ 90% cost reduction ($10-50/mo vs $171-266/mo)  
-✅ 85% less maintenance (1-2 hrs/mo vs 8-12 hrs/mo)  
-✅ Zero secret management overhead  
-✅ Simplified deployment with Slack CLI  
+✅ 90% cost reduction ($10-50/mo vs $171-266/mo)\
+✅ 85% less maintenance (1-2 hrs/mo vs 8-12 hrs/mo)\
+✅ Zero secret management overhead\
+✅ Simplified deployment with Slack CLI\
 ✅ Native Slack integration
 
 ## Architecture Decision Records (ADRs)
 
-ADRs document significant architectural and technical decisions made during the project.
+ADRs document significant architectural and technical decisions made during the
+project.
 
 ### Current ADRs
 
-- [ADR-0001: Use Slack Bolt Framework](adr/0001-use-slack-bolt-framework.md) (Azure era, now archived)
-- [Architecture Re-evaluation: Migrate to Slack Native](SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md) (Current)
+- [ADR-0001: Use Slack Bolt Framework](adr/0001-use-slack-bolt-framework.md)
+  (Azure era, now archived)
+- [Architecture Re-evaluation: Migrate to Slack Native](SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md)
+  (Current)
 
 ### Creating a New ADR
 
@@ -65,6 +72,7 @@ Documentation for the old Azure-based architecture has been moved to:
 📁 `../archive/old-azure-architecture/`
 
 This includes:
+
 - Azure deployment guides
 - Docker setup
 - Azure Functions documentation
@@ -75,13 +83,20 @@ This includes:
 ## External Resources
 
 ### Slack Development
-- [Slack Automation Platform](https://api.slack.com/automation) - Official Slack automation documentation
-- [Deno Slack SDK](https://api.slack.com/automation/functions) - SDK documentation
-- [Slack CLI Guide](https://api.slack.com/automation/cli) - CLI usage and commands
-- [Slack Datastores](https://api.slack.com/automation/datastores) - Datastore documentation
-- [Slack Workflows](https://api.slack.com/automation/workflows) - Workflow documentation
+
+- [Slack Automation Platform](https://api.slack.com/automation) - Official Slack
+  automation documentation
+- [Deno Slack SDK](https://api.slack.com/automation/functions) - SDK
+  documentation
+- [Slack CLI Guide](https://api.slack.com/automation/cli) - CLI usage and
+  commands
+- [Slack Datastores](https://api.slack.com/automation/datastores) - Datastore
+  documentation
+- [Slack Workflows](https://api.slack.com/automation/workflows) - Workflow
+  documentation
 
 ### Deno Runtime
+
 - [Deno Manual](https://deno.land/manual) - Deno runtime documentation
 - [Deno Standard Library](https://deno.land/std) - Standard library modules
 - [Deno Deploy](https://deno.com/deploy) - Deno hosting platform
@@ -156,7 +171,7 @@ export default SlackFunction(
   async ({ inputs, client }) => {
     // Implementation
     return { outputs: {} };
-  }
+  },
 );
 ```
 
@@ -175,11 +190,13 @@ If you have questions about the documentation:
 If you're migrating from the Azure-based version:
 
 1. Read the [Migration Guide](../MIGRATION_GUIDE.md)
-2. Review the [Architecture Re-evaluation](SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md)
-3. Check the archived Azure documentation in `../archive/old-azure-architecture/`
+2. Review the
+   [Architecture Re-evaluation](SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md)
+3. Check the archived Azure documentation in
+   `../archive/old-azure-architecture/`
 4. Follow deployment steps in the [Main README](../README.md)
 
 ---
 
-*Last Updated: February 2026*  
-*Architecture: Slack Native (ROSI)*
+_Last Updated: February 2026_\
+_Architecture: Slack Native (ROSI)_

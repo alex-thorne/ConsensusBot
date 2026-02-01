@@ -1,25 +1,33 @@
 # Slack Native Architecture Re-evaluation
 
-**Date**: February 2026  
-**Status**: ✅ **RECOMMENDATION UPDATED - SLACK NATIVE (ROSI)**  
-**Previous Decision (PR #10)**: Stay on Azure (Score 8.7/10 vs ROSI 5.4/10)  
+**Date**: February 2026\
+**Status**: ✅ **RECOMMENDATION UPDATED - SLACK NATIVE (ROSI)**\
+**Previous Decision (PR #10)**: Stay on Azure (Score 8.7/10 vs ROSI 5.4/10)
 
 ---
 
 ## Executive Summary
 
-After re-evaluating the architectural strategy with updated constraints, **we now recommend migrating to Slack's Run on Slack Infrastructure (ROSI)** with a Deno runtime. The key change is the **removal of the hard requirement for automated ADR push to Azure DevOps**, which was the primary blocker in the previous evaluation (PR #10).
+After re-evaluating the architectural strategy with updated constraints, **we
+now recommend migrating to Slack's Run on Slack Infrastructure (ROSI)** with a
+Deno runtime. The key change is the **removal of the hard requirement for
+automated ADR push to Azure DevOps**, which was the primary blocker in the
+previous evaluation (PR #10).
 
 ### Key Decision Factors
 
 **Previous Constraint (Removed):**
+
 - ❌ "Must integrate directly with Azure DevOps API to push files"
 
 **New Constraint (Added):**
+
 - ✅ "Simplicity is King" - Minimize moving parts
-- ✅ Manual ADR workflow acceptable - Bot posts markdown, human copies to Wiki/Repo
+- ✅ Manual ADR workflow acceptable - Bot posts markdown, human copies to
+  Wiki/Repo
 
 **Updated Recommendation:**
+
 - **Migrate to Slack Native (ROSI)** - Score: **9.2/10** (up from 5.4/10)
 - **Cost Reduction**: 70-90% savings ($10-50/month vs $171-266/month)
 - **Operational Simplicity**: 80% reduction in managed components
@@ -30,40 +38,41 @@ After re-evaluating the architectural strategy with updated constraints, **we no
 
 ### Current Azure Stack (What We're Removing)
 
-| Component | Purpose | Operational Overhead |
-|-----------|---------|---------------------|
-| **Azure App Service** | Host Node.js bot application | • Plan management<br>• Scaling configuration<br>• Deployment pipelines<br>• Health monitoring |
-| **Azure Functions** | Timer trigger for nudger (reminders) | • Function runtime management<br>• Timer configuration<br>• Separate deployment |
-| **Azure Key Vault** | Secrets management | • Access policies<br>• Secret rotation<br>• Network ACLs<br>• Audit logs |
-| **Azure Storage Account** | Function storage + ADR backup | • Redundancy config<br>• Container management<br>• Access keys rotation |
-| **Application Insights** | Monitoring and logging | • Query management<br>• Alert configuration<br>• Retention policies |
-| **Terraform State** | Infrastructure management | • State file storage<br>• State locking<br>• Remote backend config |
-| **Service Principals** | Azure authentication | • Credential rotation<br>• Permission management<br>• RBAC policies |
+| Component                 | Purpose                              | Operational Overhead                                                                          |
+| ------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| **Azure App Service**     | Host Node.js bot application         | • Plan management<br>• Scaling configuration<br>• Deployment pipelines<br>• Health monitoring |
+| **Azure Functions**       | Timer trigger for nudger (reminders) | • Function runtime management<br>• Timer configuration<br>• Separate deployment               |
+| **Azure Key Vault**       | Secrets management                   | • Access policies<br>• Secret rotation<br>• Network ACLs<br>• Audit logs                      |
+| **Azure Storage Account** | Function storage + ADR backup        | • Redundancy config<br>• Container management<br>• Access keys rotation                       |
+| **Application Insights**  | Monitoring and logging               | • Query management<br>• Alert configuration<br>• Retention policies                           |
+| **Terraform State**       | Infrastructure management            | • State file storage<br>• State locking<br>• Remote backend config                            |
+| **Service Principals**    | Azure authentication                 | • Credential rotation<br>• Permission management<br>• RBAC policies                           |
 
-**Total Azure Components**: 7 major services  
-**Secrets to Manage**: 5-7 (Slack tokens, Azure DevOps PAT, Storage keys, Service Principal credentials)
+**Total Azure Components**: 7 major services\
+**Secrets to Manage**: 5-7 (Slack tokens, Azure DevOps PAT, Storage keys,
+Service Principal credentials)
 
 ### Proposed Slack Native (ROSI) Stack
 
-| Component | Purpose | Operational Overhead |
-|-----------|---------|---------------------|
-| **Slack Workflows (ROSI)** | Host Deno runtime for bot logic | • Minimal - Slack manages runtime<br>• Auto-scaling<br>• No deployment config |
-| **Slack Datastores** | Vote tracking and decision state | • Zero - Built into Slack<br>• Automatic backups<br>• Native API access |
-| **Slack Scheduled Triggers** | Timer for reminders (nudger) | • Visual configuration<br>• No code deployment |
+| Component                    | Purpose                          | Operational Overhead                                                          |
+| ---------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
+| **Slack Workflows (ROSI)**   | Host Deno runtime for bot logic  | • Minimal - Slack manages runtime<br>• Auto-scaling<br>• No deployment config |
+| **Slack Datastores**         | Vote tracking and decision state | • Zero - Built into Slack<br>• Automatic backups<br>• Native API access       |
+| **Slack Scheduled Triggers** | Timer for reminders (nudger)     | • Visual configuration<br>• No code deployment                                |
 
-**Total Slack Components**: 1 platform (3 integrated features)  
+**Total Slack Components**: 1 platform (3 integrated features)\
 **Secrets to Manage**: 0 (Slack handles authentication automatically)
 
 ### Complexity Reduction
 
-| Metric | Azure | Slack ROSI | Reduction |
-|--------|-------|------------|-----------|
-| **External Services** | 7 | 0 | 100% |
-| **Secrets to Rotate** | 5-7 | 0 | 100% |
-| **Deployment Pipelines** | 2-3 | 1 | 67% |
-| **Infrastructure Code (LOC)** | ~300 (Terraform) | ~20 (Slack manifest) | 93% |
-| **Monitoring Dashboards** | 2-3 | 1 (Slack built-in) | 67% |
-| **Monthly Maintenance Hours** | 8-12 hrs | 1-2 hrs | 85% |
+| Metric                        | Azure            | Slack ROSI           | Reduction |
+| ----------------------------- | ---------------- | -------------------- | --------- |
+| **External Services**         | 7                | 0                    | 100%      |
+| **Secrets to Rotate**         | 5-7              | 0                    | 100%      |
+| **Deployment Pipelines**      | 2-3              | 1                    | 67%       |
+| **Infrastructure Code (LOC)** | ~300 (Terraform) | ~20 (Slack manifest) | 93%       |
+| **Monitoring Dashboards**     | 2-3              | 1 (Slack built-in)   | 67%       |
+| **Monthly Maintenance Hours** | 8-12 hrs         | 1-2 hrs              | 85%       |
 
 ---
 
@@ -73,19 +82,20 @@ After re-evaluating the architectural strategy with updated constraints, **we no
 
 Based on PR #10 analysis and current infrastructure:
 
-| Service | Monthly Cost | Annual Cost |
-|---------|-------------|-------------|
-| **App Service Plan** (B1 - Basic) | $55 | $660 |
-| **Azure Functions** (Consumption) | $5-15 | $60-180 |
-| **Azure Key Vault** | $3-5 | $36-60 |
-| **Storage Account** | $2-5 | $24-60 |
-| **Application Insights** (5GB/month) | $106-186 | $1,272-2,232 |
-| **Terraform Remote State Storage** | $2 | $24 |
-| **Developer Time** (8 hrs/month @ $150/hr) | - | $14,400 |
-| **TOTAL (Infrastructure)** | **$171-266/month** | **$2,052-3,192/year** |
-| **TOTAL (with Developer Time)** | **$1,371-$1,466/month** | **$16,452-$17,592/year** |
+| Service                                    | Monthly Cost            | Annual Cost              |
+| ------------------------------------------ | ----------------------- | ------------------------ |
+| **App Service Plan** (B1 - Basic)          | $55                     | $660                     |
+| **Azure Functions** (Consumption)          | $5-15                   | $60-180                  |
+| **Azure Key Vault**                        | $3-5                    | $36-60                   |
+| **Storage Account**                        | $2-5                    | $24-60                   |
+| **Application Insights** (5GB/month)       | $106-186                | $1,272-2,232             |
+| **Terraform Remote State Storage**         | $2                      | $24                      |
+| **Developer Time** (8 hrs/month @ $150/hr) | -                       | $14,400                  |
+| **TOTAL (Infrastructure)**                 | **$171-266/month**      | **$2,052-3,192/year**    |
+| **TOTAL (with Developer Time)**            | **$1,371-$1,466/month** | **$16,452-$17,592/year** |
 
 **Optimized Azure** (from PR #10 recommendations):
+
 - Reduced to $50-105/month by:
   - Right-sizing App Service Plan to F1 (Free) or B1
   - Sampling Application Insights data
@@ -94,24 +104,25 @@ Based on PR #10 analysis and current infrastructure:
 
 ### Slack Native (ROSI) Pricing
 
-| Scenario | Monthly Cost | Annual Cost | Notes |
-|----------|-------------|-------------|-------|
-| **Enterprise Grid Plan** | $0 (included) | $0 | Most orgs already have this plan |
-| **Low Volume** (<50 decisions/month) | $10-25 | $120-300 | Pay-per-execution model |
-| **Medium Volume** (50-200 decisions/month) | $25-50 | $300-600 | Still minimal vs Azure |
-| **Developer Time** (1 hr/month @ $150/hr) | - | $1,800 | 87.5% reduction |
-| **TOTAL (Low Volume)** | **$10-50/month** | **$120-600/year** |
-| **TOTAL (with Developer Time)** | **$160-200/month** | **$1,920-$2,400/year** |
+| Scenario                                   | Monthly Cost       | Annual Cost            | Notes                            |
+| ------------------------------------------ | ------------------ | ---------------------- | -------------------------------- |
+| **Enterprise Grid Plan**                   | $0 (included)      | $0                     | Most orgs already have this plan |
+| **Low Volume** (<50 decisions/month)       | $10-25             | $120-300               | Pay-per-execution model          |
+| **Medium Volume** (50-200 decisions/month) | $25-50             | $300-600               | Still minimal vs Azure           |
+| **Developer Time** (1 hr/month @ $150/hr)  | -                  | $1,800                 | 87.5% reduction                  |
+| **TOTAL (Low Volume)**                     | **$10-50/month**   | **$120-600/year**      |                                  |
+| **TOTAL (with Developer Time)**            | **$160-200/month** | **$1,920-$2,400/year** |                                  |
 
 ### Cost Comparison Summary
 
-| Scenario | Azure (Current) | Azure (Optimized) | Slack ROSI | Savings |
-|----------|----------------|-------------------|------------|---------|
-| **Infrastructure Only** | $171-266/mo | $50-105/mo | $10-50/mo | 70-90% |
-| **Total Cost (incl. ops)** | $1,371-1,466/mo | $1,250-1,305/mo | $160-200/mo | 86-88% |
-| **Annual TCO** | $16,452-17,592 | $15,000-15,660 | $1,920-2,400 | 86-88% |
+| Scenario                   | Azure (Current) | Azure (Optimized) | Slack ROSI   | Savings |
+| -------------------------- | --------------- | ----------------- | ------------ | ------- |
+| **Infrastructure Only**    | $171-266/mo     | $50-105/mo        | $10-50/mo    | 70-90%  |
+| **Total Cost (incl. ops)** | $1,371-1,466/mo | $1,250-1,305/mo   | $160-200/mo  | 86-88%  |
+| **Annual TCO**             | $16,452-17,592  | $15,000-15,660    | $1,920-2,400 | 86-88%  |
 
 **ROI on Migration:**
+
 - Migration effort: ~40-60 hours (AI-assisted refactoring)
 - Migration cost: $9,300 (62 hours at $150/hr)
 - **Payback period**: 7-8 months
@@ -124,24 +135,26 @@ Based on PR #10 analysis and current infrastructure:
 
 ### Security Comparison Matrix
 
-| Security Dimension | Azure | Slack ROSI | Winner |
-|-------------------|-------|------------|--------|
-| **Authentication** | Manual Service Principal + PAT management | Automatic OAuth token rotation | ROSI ✅ |
-| **Secret Storage** | Azure Key Vault (separate service) | Slack-managed environment variables | ROSI ✅ |
-| **Network Security** | NSGs, CORS, IP allowlists | Platform-level isolation | Tie ⚖️ |
-| **Data Encryption** | TLS 1.2, Storage encryption | TLS 1.3, Native encryption | ROSI ✅ |
-| **Compliance** | SOC 2, ISO 27001 (DIY audit) | SOC 2, ISO 27001 (Slack-certified) | ROSI ✅ |
-| **Vulnerability Patching** | Manual - monthly updates | Automatic - platform managed | ROSI ✅ |
-| **Access Control** | RBAC + IAM + Key Vault policies | Workspace-level permissions | Tie ⚖️ |
-| **Audit Logging** | Application Insights queries | Slack Audit Logs API | Tie ⚖️ |
+| Security Dimension         | Azure                                     | Slack ROSI                          | Winner  |
+| -------------------------- | ----------------------------------------- | ----------------------------------- | ------- |
+| **Authentication**         | Manual Service Principal + PAT management | Automatic OAuth token rotation      | ROSI ✅ |
+| **Secret Storage**         | Azure Key Vault (separate service)        | Slack-managed environment variables | ROSI ✅ |
+| **Network Security**       | NSGs, CORS, IP allowlists                 | Platform-level isolation            | Tie ⚖️   |
+| **Data Encryption**        | TLS 1.2, Storage encryption               | TLS 1.3, Native encryption          | ROSI ✅ |
+| **Compliance**             | SOC 2, ISO 27001 (DIY audit)              | SOC 2, ISO 27001 (Slack-certified)  | ROSI ✅ |
+| **Vulnerability Patching** | Manual - monthly updates                  | Automatic - platform managed        | ROSI ✅ |
+| **Access Control**         | RBAC + IAM + Key Vault policies           | Workspace-level permissions         | Tie ⚖️   |
+| **Audit Logging**          | Application Insights queries              | Slack Audit Logs API                | Tie ⚖️   |
 
 **Security Score:**
+
 - **Azure**: 8.5/10 (Mature but complex)
 - **Slack ROSI**: 9/10 (Simpler + automatic)
 
 ### Secrets Management Comparison
 
 #### Azure Approach (Current)
+
 ```
 Secrets to Manage:
 1. SLACK_BOT_TOKEN (rotate every 90 days)
@@ -161,6 +174,7 @@ Manual Steps:
 ```
 
 #### Slack ROSI Approach (Proposed)
+
 ```
 Secrets to Manage:
 (None - Slack handles authentication automatically)
@@ -172,6 +186,7 @@ Automatic Steps:
 ```
 
 **Key Benefits:**
+
 - ✅ Zero secret rotation burden
 - ✅ No "Identity Broker" layer needed
 - ✅ Reduced attack surface (no external secret stores)
@@ -198,6 +213,7 @@ Commit to version control
 ```
 
 **Complexity:**
+
 - Requires Azure DevOps PAT
 - Git API integration
 - Error handling for API failures
@@ -221,6 +237,7 @@ Human pastes into Wiki/Repo
 ```
 
 **Simplicity:**
+
 - No external API required
 - No credentials to manage
 - No error handling needed
@@ -229,20 +246,21 @@ Human pastes into Wiki/Repo
 
 ### ADR Workflow Comparison
 
-| Aspect | Automated (Azure) | Manual (Slack Native) |
-|--------|------------------|----------------------|
-| **Time to Archive** | Instant | 2-5 minutes |
-| **Reliability** | 95% (API failures) | 100% (human-verified) |
-| **Flexibility** | Fixed template | Editable before commit |
-| **Complexity** | High (API, auth, retry) | Zero (copy/paste) |
-| **Maintenance** | Quarterly (credentials) | None |
-| **Cost** | Requires Azure infra | Free |
-| **Quality Control** | Automated (no review) | Human review before commit |
+| Aspect              | Automated (Azure)       | Manual (Slack Native)      |
+| ------------------- | ----------------------- | -------------------------- |
+| **Time to Archive** | Instant                 | 2-5 minutes                |
+| **Reliability**     | 95% (API failures)      | 100% (human-verified)      |
+| **Flexibility**     | Fixed template          | Editable before commit     |
+| **Complexity**      | High (API, auth, retry) | Zero (copy/paste)          |
+| **Maintenance**     | Quarterly (credentials) | None                       |
+| **Cost**            | Requires Azure infra    | Free                       |
+| **Quality Control** | Automated (no review)   | Human review before commit |
 
-**Decision:**
-✅ **Manual workflow eliminates Azure Function/DevOps Bridge entirely**
+**Decision:** ✅ **Manual workflow eliminates Azure Function/DevOps Bridge
+entirely**
 
 **Validation:**
+
 - For low-volume usage (<50 decisions/month), manual archival = ~2-3 hours/month
 - Automated Azure maintenance = ~8-12 hours/month
 - **Net time savings: 5-9 hours/month**
@@ -253,26 +271,26 @@ Human pastes into Wiki/Repo
 
 ### 10-Dimension Scorecard
 
-| Dimension | Azure (PR #10) | Slack ROSI (New) | Weight | Azure Score | ROSI Score |
-|-----------|---------------|-----------------|--------|-------------|------------|
-| **1. Operational Complexity** | 6/10 (Many moving parts) | 9/10 (Minimal) | 20% | 1.2 | 1.8 |
-| **2. Infrastructure Cost** | 7/10 ($50-266/mo) | 10/10 ($10-50/mo) | 15% | 1.05 | 1.5 |
-| **3. Developer Productivity** | 6/10 (Context switching) | 9/10 (Single platform) | 15% | 0.9 | 1.35 |
-| **4. Security Posture** | 9/10 (Mature) | 9/10 (Managed) | 15% | 1.35 | 1.35 |
-| **5. Scalability** | 9/10 (Very scalable) | 8/10 (Slack limits) | 10% | 0.9 | 0.8 |
-| **6. Vendor Lock-in Risk** | 7/10 (Multi-cloud) | 5/10 (Slack-specific) | 5% | 0.35 | 0.25 |
-| **7. Reliability/Uptime** | 9/10 (Azure SLA) | 10/10 (Slack SLA) | 10% | 0.9 | 1.0 |
-| **8. Time to Market** | 5/10 (Already deployed) | 8/10 (Fast migration) | 5% | 0.25 | 0.4 |
-| **9. Maintenance Burden** | 5/10 (High) | 10/10 (Minimal) | 10% | 0.5 | 1.0 |
-| **10. Alignment with Requirements** | 9/10 (All features) | 10/10 (Simplified req) | 5% | 0.45 | 0.5 |
-| **TOTAL SCORE** | | | **100%** | **7.85/10** | **9.95/10** |
+| Dimension                           | Azure (PR #10)           | Slack ROSI (New)       | Weight   | Azure Score | ROSI Score  |
+| ----------------------------------- | ------------------------ | ---------------------- | -------- | ----------- | ----------- |
+| **1. Operational Complexity**       | 6/10 (Many moving parts) | 9/10 (Minimal)         | 20%      | 1.2         | 1.8         |
+| **2. Infrastructure Cost**          | 7/10 ($50-266/mo)        | 10/10 ($10-50/mo)      | 15%      | 1.05        | 1.5         |
+| **3. Developer Productivity**       | 6/10 (Context switching) | 9/10 (Single platform) | 15%      | 0.9         | 1.35        |
+| **4. Security Posture**             | 9/10 (Mature)            | 9/10 (Managed)         | 15%      | 1.35        | 1.35        |
+| **5. Scalability**                  | 9/10 (Very scalable)     | 8/10 (Slack limits)    | 10%      | 0.9         | 0.8         |
+| **6. Vendor Lock-in Risk**          | 7/10 (Multi-cloud)       | 5/10 (Slack-specific)  | 5%       | 0.35        | 0.25        |
+| **7. Reliability/Uptime**           | 9/10 (Azure SLA)         | 10/10 (Slack SLA)      | 10%      | 0.9         | 1.0         |
+| **8. Time to Market**               | 5/10 (Already deployed)  | 8/10 (Fast migration)  | 5%       | 0.25        | 0.4         |
+| **9. Maintenance Burden**           | 5/10 (High)              | 10/10 (Minimal)        | 10%      | 0.5         | 1.0         |
+| **10. Alignment with Requirements** | 9/10 (All features)      | 10/10 (Simplified req) | 5%       | 0.45        | 0.5         |
+| **TOTAL SCORE**                     |                          |                        | **100%** | **7.85/10** | **9.95/10** |
 
 ### Updated Verdict
 
-| Architecture | Previous Score (PR #10) | Updated Score | Change |
-|--------------|------------------------|---------------|--------|
-| **Azure** | 8.7/10 | 7.85/10 | -0.85 (req change) |
-| **Slack ROSI** | 5.4/10 | 9.95/10 | +4.55 (blocker removed) |
+| Architecture   | Previous Score (PR #10) | Updated Score | Change                  |
+| -------------- | ----------------------- | ------------- | ----------------------- |
+| **Azure**      | 8.7/10                  | 7.85/10       | -0.85 (req change)      |
+| **Slack ROSI** | 5.4/10                  | 9.95/10       | +4.55 (blocker removed) |
 
 **Winner**: **Slack Native (ROSI)** by **+2.1 points**
 
@@ -283,6 +301,7 @@ Human pastes into Wiki/Repo
 ### Azure (Current Architecture)
 
 #### Pros ✅
+
 1. **Already Deployed**: No migration needed
 2. **Mature Tooling**: Well-understood Node.js ecosystem
 3. **Multi-Cloud Strategy**: Not locked to Slack
@@ -292,6 +311,7 @@ Human pastes into Wiki/Repo
 7. **Comprehensive Monitoring**: Application Insights analytics
 
 #### Cons ❌
+
 1. **High Operational Cost**: $171-266/month infrastructure
 2. **Complex Architecture**: 7 separate services to manage
 3. **Secret Rotation Burden**: 5-7 credentials to rotate quarterly
@@ -305,6 +325,7 @@ Human pastes into Wiki/Repo
 ### Slack Native (ROSI) - Proposed
 
 #### Pros ✅
+
 1. **Radical Simplicity**: Single platform for everything
 2. **90% Cost Reduction**: $10-50/month vs $171-266/month
 3. **Zero Secret Management**: Slack handles auth automatically
@@ -317,6 +338,7 @@ Human pastes into Wiki/Repo
 10. **Security**: Slack's SOC 2 Type II, ISO 27001 compliance
 
 #### Cons ❌
+
 1. **Migration Effort**: 40-60 hours to rewrite (Node.js → Deno)
 2. **Vendor Lock-in**: Tightly coupled to Slack platform
 3. **Runtime Limitations**: Deno-only, limited libraries
@@ -324,7 +346,8 @@ Human pastes into Wiki/Repo
 5. **Learning Curve**: Team must learn Deno + ROSI APIs
 6. **Less Monitoring Granularity**: Slack's built-in tools vs custom dashboards
 7. **Execution Time Limits**: 30-second timeout per function
-8. **Loss of Automated ADR Push**: Manual copy/paste required (acceptable per new requirements)
+8. **Loss of Automated ADR Push**: Manual copy/paste required (acceptable per
+   new requirements)
 
 ---
 
@@ -346,6 +369,7 @@ Human pastes into Wiki/Repo
 - [ ] Test Datastore CRUD operations
 
 **Deliverables:**
+
 - Slack app manifest file
 - Datastore schema definitions
 - Basic command handler (Deno)
@@ -368,6 +392,7 @@ Human pastes into Wiki/Repo
 - [ ] Implement voting button handlers
 
 **Deliverables:**
+
 - Deno TypeScript modules (100% test coverage)
 - Datastore integration layer
 - Interactive voting UI (Block Kit)
@@ -389,6 +414,7 @@ Human pastes into Wiki/Repo
 - [ ] Add deadline enforcement
 
 **Deliverables:**
+
 - Scheduled workflow for reminders
 - Finalization handler function
 - ADR markdown template (for manual copy/paste)
@@ -409,6 +435,7 @@ Human pastes into Wiki/Repo
 - [ ] Security scan (Slack app permissions audit)
 
 **Deliverables:**
+
 - Test suite (90%+ coverage)
 - E2E test scenarios
 - Performance benchmarks
@@ -431,6 +458,7 @@ Human pastes into Wiki/Repo
   - Destroy Terraform state
 
 **Deliverables:**
+
 - Production Slack app
 - Migration runbook
 - Updated README and docs
@@ -438,17 +466,17 @@ Human pastes into Wiki/Repo
 
 ### Migration Effort Summary
 
-| Phase | Duration | Developer Hours | Cost (@ $150/hr) |
-|-------|----------|----------------|------------------|
-| Phase 1 | 2 weeks | 12 hours | $1,800 |
-| Phase 2 | 2 weeks | 20 hours | $3,000 |
-| Phase 3 | 1 week | 12 hours | $1,800 |
-| Phase 4 | 1 week | 10 hours | $1,500 |
-| Phase 5 | 1 week | 8 hours | $1,200 |
-| **TOTAL** | **7 weeks** | **62 hours** | **$9,300** |
+| Phase     | Duration    | Developer Hours | Cost (@ $150/hr) |
+| --------- | ----------- | --------------- | ---------------- |
+| Phase 1   | 2 weeks     | 12 hours        | $1,800           |
+| Phase 2   | 2 weeks     | 20 hours        | $3,000           |
+| Phase 3   | 1 week      | 12 hours        | $1,800           |
+| Phase 4   | 1 week      | 10 hours        | $1,500           |
+| Phase 5   | 1 week      | 8 hours         | $1,200           |
+| **TOTAL** | **7 weeks** | **62 hours**    | **$9,300**       |
 
-**Payback Period**: 7-8 months  
-**ROI Year 1**: 60%  
+**Payback Period**: 7-8 months\
+**ROI Year 1**: 60%\
 **ROI Year 2+**: 160%
 
 ---
@@ -457,15 +485,15 @@ Human pastes into Wiki/Repo
 
 ### Migration Risks
 
-| Risk | Probability | Impact | Mitigation Strategy |
-|------|-------------|--------|-------------------|
-| **Deno Learning Curve** | Medium | Medium | • Use AI code translation tools<br>• Deno has 80% API compatibility with Node<br>• TypeScript skills transfer directly |
-| **Data Migration Failure** | Low | High | • Export all decisions to JSON backup<br>• Parallel run both systems for 48 hours<br>• Rollback plan with Azure infra snapshot |
-| **Slack Platform Outage** | Low | High | • Slack has 99.99% SLA<br>• Better than our self-managed Azure uptime<br>• Incident response plan documented |
-| **Workflow Timeout Issues** | Medium | Low | • Most operations complete in <3 seconds<br>• Break long operations into steps<br>• Async processing for ADR generation |
-| **Datastore Size Limits** | Low | Low | • 1GB limit = ~10,000 decisions<br>• Archive old decisions to Slack messages<br>• Our volume: <50/month = 200 years capacity |
-| **User Adoption** | Low | Medium | • UX stays identical (same Slack commands)<br>• Transparent backend change<br>• Communication plan for rollout |
-| **Vendor Lock-in** | High | Medium | • Acceptable trade-off for 90% cost reduction<br>• Export APIs available if migration needed<br>• Core logic in portable TypeScript |
+| Risk                        | Probability | Impact | Mitigation Strategy                                                                                                                 |
+| --------------------------- | ----------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Deno Learning Curve**     | Medium      | Medium | • Use AI code translation tools<br>• Deno has 80% API compatibility with Node<br>• TypeScript skills transfer directly              |
+| **Data Migration Failure**  | Low         | High   | • Export all decisions to JSON backup<br>• Parallel run both systems for 48 hours<br>• Rollback plan with Azure infra snapshot      |
+| **Slack Platform Outage**   | Low         | High   | • Slack has 99.99% SLA<br>• Better than our self-managed Azure uptime<br>• Incident response plan documented                        |
+| **Workflow Timeout Issues** | Medium      | Low    | • Most operations complete in <3 seconds<br>• Break long operations into steps<br>• Async processing for ADR generation             |
+| **Datastore Size Limits**   | Low         | Low    | • 1GB limit = ~10,000 decisions<br>• Archive old decisions to Slack messages<br>• Our volume: <50/month = 200 years capacity        |
+| **User Adoption**           | Low         | Medium | • UX stays identical (same Slack commands)<br>• Transparent backend change<br>• Communication plan for rollout                      |
+| **Vendor Lock-in**          | High        | Medium | • Acceptable trade-off for 90% cost reduction<br>• Export APIs available if migration needed<br>• Core logic in portable TypeScript |
 
 ### Rollback Plan
 
@@ -476,7 +504,8 @@ If migration fails, we can revert within 4 hours:
 3. Point DNS back to Azure endpoint
 4. Import any new decisions from Slack Datastores to Azure SQL
 
-**Recommendation**: Keep Azure infrastructure idle (stopped) for 30 days post-migration.
+**Recommendation**: Keep Azure infrastructure idle (stopped) for 30 days
+post-migration.
 
 ---
 
@@ -484,39 +513,45 @@ If migration fails, we can revert within 4 hours:
 
 ### What Changed Between Evaluations?
 
-| Factor | PR #10 (Jan 2026) | This Evaluation (Feb 2026) |
-|--------|------------------|----------------------------|
-| **ADR Integration** | Hard requirement - automated push | Soft requirement - manual acceptable |
-| **Priority** | Feature completeness | Radical simplicity |
-| **Cost Sensitivity** | Medium | High |
-| **Operational Burden** | Acceptable | Minimize |
-| **Azure DevOps Integration** | Mandatory | Optional |
+| Factor                       | PR #10 (Jan 2026)                 | This Evaluation (Feb 2026)           |
+| ---------------------------- | --------------------------------- | ------------------------------------ |
+| **ADR Integration**          | Hard requirement - automated push | Soft requirement - manual acceptable |
+| **Priority**                 | Feature completeness              | Radical simplicity                   |
+| **Cost Sensitivity**         | Medium                            | High                                 |
+| **Operational Burden**       | Acceptable                        | Minimize                             |
+| **Azure DevOps Integration** | Mandatory                         | Optional                             |
 
 ### Why the Score Flipped
 
 #### PR #10 Conclusion (Azure Wins 8.7 vs 5.4)
+
 ```
 "Azure DevOps integration blocks ROSI adoption"
 "Workaround requires maintaining Azure infrastructure anyway"
 "Migration cost unjustified without clear benefit"
 ```
 
-**Blocker**: ROSI cannot directly access external Git APIs → Still need Azure proxy → Migration pointless
+**Blocker**: ROSI cannot directly access external Git APIs → Still need Azure
+proxy → Migration pointless
 
 #### This Evaluation Conclusion (ROSI Wins 9.95 vs 7.85)
+
 ```
 "Manual ADR workflow eliminates Azure dependency entirely"
 "90% cost reduction justifies migration effort"
 "Operational simplicity aligns with new 'Simplicity is King' priority"
 ```
 
-**Unlock**: Manual ADR handoff removes Git integration requirement → Zero Azure components needed → Full migration benefit realized
+**Unlock**: Manual ADR handoff removes Git integration requirement → Zero Azure
+components needed → Full migration benefit realized
 
 ### Key Insight
 
-The previous evaluation was **architecturally correct** given the constraints at the time. The constraint change (automated → manual ADR) fundamentally alters the cost-benefit equation.
+The previous evaluation was **architecturally correct** given the constraints at
+the time. The constraint change (automated → manual ADR) fundamentally alters
+the cost-benefit equation.
 
-**Previous ROI**: Negative (maintain Azure anyway)  
+**Previous ROI**: Negative (maintain Azure anyway)\
 **Updated ROI**: **+150-200% Year 2+** (eliminate Azure completely)
 
 ---
@@ -557,8 +592,10 @@ The previous evaluation was **architecturally correct** given the constraints at
 ### When to Reconsider Azure
 
 Only reconsider Azure if requirements change to include:
+
 - **High volume** (>500 decisions/month) → Cost inflection point
-- **Multi-platform** (Teams, Discord support) → Need platform-agnostic architecture
+- **Multi-platform** (Teams, Discord support) → Need platform-agnostic
+  architecture
 - **Automated Git integration** → External API access required
 - **Complex analytics** → Custom dashboards and ML pipelines
 - **Multi-region compliance** → Data residency requirements
@@ -679,39 +716,40 @@ Savings: $1,200/month (80%)
 ```typescript
 // decisions.ts - Decision metadata storage
 interface Decision {
-  id: string;                    // Primary key (message timestamp)
-  name: string;                  // Decision title
-  proposal: string;              // Detailed proposal text
-  success_criteria: 'simple_majority' | 'super_majority' | 'unanimous';
-  deadline: string;              // ISO 8601 timestamp
-  channel_id: string;            // Slack channel ID
-  creator_id: string;            // User who created decision
-  message_ts: string;            // Slack message timestamp
-  status: 'active' | 'approved' | 'rejected' | 'expired';
-  created_at: string;            // ISO 8601 timestamp
-  updated_at: string;            // ISO 8601 timestamp
+  id: string; // Primary key (message timestamp)
+  name: string; // Decision title
+  proposal: string; // Detailed proposal text
+  success_criteria: "simple_majority" | "super_majority" | "unanimous";
+  deadline: string; // ISO 8601 timestamp
+  channel_id: string; // Slack channel ID
+  creator_id: string; // User who created decision
+  message_ts: string; // Slack message timestamp
+  status: "active" | "approved" | "rejected" | "expired";
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
 }
 
 // voters.ts - Required voters per decision
 interface Voter {
-  id: string;                    // Primary key
-  decision_id: string;           // Foreign key to Decision
-  user_id: string;               // Slack user ID
-  required: boolean;             // Whether vote is required
+  id: string; // Primary key
+  decision_id: string; // Foreign key to Decision
+  user_id: string; // Slack user ID
+  required: boolean; // Whether vote is required
   created_at: string;
 }
 
 // votes.ts - Cast votes
 interface Vote {
-  id: string;                    // Primary key
-  decision_id: string;           // Foreign key to Decision
-  user_id: string;               // Slack user ID
-  vote_type: 'yes' | 'no' | 'abstain';
-  voted_at: string;              // ISO 8601 timestamp
+  id: string; // Primary key
+  decision_id: string; // Foreign key to Decision
+  user_id: string; // Slack user ID
+  vote_type: "yes" | "no" | "abstain";
+  voted_at: string; // ISO 8601 timestamp
 }
 ```
 
 **Storage Estimate:**
+
 - Average decision size: 2 KB (metadata + proposal)
 - Average vote size: 0.5 KB
 - 50 decisions/month × 12 months = 600 decisions/year
@@ -738,22 +776,22 @@ interface Vote {
   - [ ] Slack app manifest created
   - [ ] Datastores configured
   - [ ] Basic commands working
-  
+
 - [ ] Phase 2: Core Logic (Week 3-4)
   - [ ] Utility modules ported to Deno
   - [ ] State management refactored
   - [ ] Voting UI implemented
-  
+
 - [ ] Phase 3: Reminders (Week 5)
   - [ ] Scheduled trigger configured
   - [ ] Finalization logic working
   - [ ] ADR generation tested
-  
+
 - [ ] Phase 4: Testing (Week 6)
   - [ ] Unit tests passing (90%+ coverage)
   - [ ] Integration tests passing
   - [ ] E2E scenarios validated
-  
+
 - [ ] Phase 5: Deployment (Week 7)
   - [ ] Production app deployed
   - [ ] Parallel run completed
@@ -803,12 +841,12 @@ interface Vote {
 
 ## Document History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-02-01 | Architecture Team | Initial evaluation with updated constraints |
+| Version | Date       | Author            | Changes                                     |
+| ------- | ---------- | ----------------- | ------------------------------------------- |
+| 1.0     | 2026-02-01 | Architecture Team | Initial evaluation with updated constraints |
 
 ---
 
-**Next Review Date**: 2026-08-01 (6 months post-migration)  
-**Owner**: Product & Engineering Leadership  
+**Next Review Date**: 2026-08-01 (6 months post-migration)\
+**Owner**: Product & Engineering Leadership\
 **Decision Status**: ✅ Recommended - Pending Stakeholder Approval

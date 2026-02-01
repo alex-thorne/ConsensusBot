@@ -6,11 +6,14 @@
 
 ## Context
 
-[Describe the context and background of the decision. What is the issue or situation that requires a decision? Include relevant technical, business, or organizational factors.]
+[Describe the context and background of the decision. What is the issue or
+situation that requires a decision? Include relevant technical, business, or
+organizational factors.]
 
 ## Decision
 
-[Describe the decision that was made. Be specific and clear about what was decided.]
+[Describe the decision that was made. Be specific and clear about what was
+decided.]
 
 ## Consequences
 
@@ -46,7 +49,8 @@
 
 ## Implementation Notes
 
-[Optional: Any specific notes about implementing this decision, migration plans, or timeline considerations]
+[Optional: Any specific notes about implementing this decision, migration plans,
+or timeline considerations]
 
 ## References
 

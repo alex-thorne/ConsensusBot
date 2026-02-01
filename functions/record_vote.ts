@@ -3,20 +3,13 @@ import DecisionDatastore from "../datastores/decisions.ts";
 import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { calculateDecisionOutcome } from "../utils/decision_logic.ts";
-import { generateADRMarkdown, formatADRForSlack } from "../utils/adr_generator.ts";
+import {
+  formatADRForSlack,
+  generateADRMarkdown,
+} from "../utils/adr_generator.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
-
-// Type definitions for Decision data
-interface DecisionRecord {
-  id: string;
-  name: string;
-  status: string;
-  success_criteria: string;
-  deadline: string;
-  channel_id: string;
-  creator_id: string;
-  [key: string]: unknown;
-}
+import { SlackClient } from "../types/slack_types.ts";
+import { DecisionRecord } from "../types/decision_types.ts";
 
 /**
  * Function to record a vote on a decision
@@ -49,7 +42,13 @@ export const RecordVoteFunction = DefineFunction({
         description: "Timestamp of the voting message",
       },
     },
-    required: ["decision_id", "vote_type", "user_id", "channel_id", "message_ts"],
+    required: [
+      "decision_id",
+      "vote_type",
+      "user_id",
+      "channel_id",
+      "message_ts",
+    ],
   },
   output_parameters: {
     properties: {
@@ -66,19 +65,19 @@ export default SlackFunction(
   RecordVoteFunction,
   async ({ inputs, client }) => {
     const { decision_id, vote_type, user_id, channel_id, message_ts } = inputs;
-    
+
     // Get decision
     const getDecision = await client.apps.datastore.get({
       datastore: DecisionDatastore.name,
       id: decision_id,
     });
-    
+
     if (!getDecision.ok || !getDecision.item) {
       return { error: "Decision not found" };
     }
-    
-    const decision = getDecision.item;
-    
+
+    const decision = getDecision.item as DecisionRecord;
+
     // Check if decision is still active
     if (decision.status !== "active") {
       await client.chat.postEphemeral({
@@ -88,13 +87,13 @@ export default SlackFunction(
       });
       return { outputs: { success: false } };
     }
-    
+
     // Check if voter is eligible
     const getVoter = await client.apps.datastore.get({
       datastore: VoterDatastore.name,
       id: `${decision_id}_${user_id}`,
     });
-    
+
     if (!getVoter.ok || !getVoter.item) {
       await client.chat.postEphemeral({
         channel: channel_id,
@@ -103,11 +102,11 @@ export default SlackFunction(
       });
       return { outputs: { success: false } };
     }
-    
+
     // Record or update vote
     const vote_id = `${decision_id}_${user_id}`;
     const now = new Date().toISOString();
-    
+
     await client.apps.datastore.put({
       datastore: VoteDatastore.name,
       item: {
@@ -118,26 +117,31 @@ export default SlackFunction(
         voted_at: now,
       },
     });
-    
+
     // Send confirmation
-    const voteEmoji = vote_type === 'yes' ? '✅' : vote_type === 'no' ? '❌' : '⚪';
+    const voteEmoji = vote_type === "yes"
+      ? "✅"
+      : vote_type === "no"
+      ? "❌"
+      : "⚪";
     await client.chat.postEphemeral({
       channel: channel_id,
       user: user_id,
-      text: `${voteEmoji} Your vote (${vote_type.toUpperCase()}) has been recorded for "${decision.name}"`,
+      text:
+        `${voteEmoji} Your vote (${vote_type.toUpperCase()}) has been recorded for "${decision.name}"`,
     });
-    
+
     // Check if all votes are in or deadline passed
     const shouldFinalize = await checkIfShouldFinalize(
       client,
       decision_id,
-      decision.deadline as string
+      decision.deadline as string,
     );
-    
+
     if (shouldFinalize) {
       await finalizeDecision(client, decision, channel_id, message_ts);
     }
-    
+
     return { outputs: { success: true } };
   },
 );
@@ -146,16 +150,15 @@ export default SlackFunction(
  * Check if decision should be finalized
  */
 async function checkIfShouldFinalize(
-  // deno-lint-ignore no-explicit-any
-  client: any,
+  client: SlackClient,
   decision_id: string,
-  deadline: string
+  deadline: string,
 ): Promise<boolean> {
   // Check deadline
   if (isDeadlinePassed(deadline)) {
     return true;
   }
-  
+
   // Check if all required voters have voted
   const voters = await client.apps.datastore.query({
     datastore: VoterDatastore.name,
@@ -163,18 +166,18 @@ async function checkIfShouldFinalize(
     expression_attributes: { "#decision_id": "decision_id" },
     expression_values: { ":decision_id": decision_id },
   });
-  
+
   const votes = await client.apps.datastore.query({
     datastore: VoteDatastore.name,
     expression: "#decision_id = :decision_id",
     expression_attributes: { "#decision_id": "decision_id" },
     expression_values: { ":decision_id": decision_id },
   });
-  
+
   if (voters.ok && votes.ok) {
     return voters.items.length === votes.items.length;
   }
-  
+
   return false;
 }
 
@@ -182,11 +185,10 @@ async function checkIfShouldFinalize(
  * Finalize a decision and generate ADR
  */
 async function finalizeDecision(
-  // deno-lint-ignore no-explicit-any
-  client: any,
+  client: SlackClient,
   decision: DecisionRecord,
   channel_id: string,
-  message_ts: string
+  message_ts: string,
 ) {
   // Get all votes
   const votesResponse = await client.apps.datastore.query({
@@ -195,14 +197,14 @@ async function finalizeDecision(
     expression_attributes: { "#decision_id": "decision_id" },
     expression_values: { ":decision_id": decision.id },
   });
-  
+
   if (!votesResponse.ok) {
     console.error("Failed to get votes for finalization");
     return;
   }
-  
+
   const votes = votesResponse.items;
-  
+
   // Get required voters count
   const votersResponse = await client.apps.datastore.query({
     datastore: VoterDatastore.name,
@@ -210,16 +212,18 @@ async function finalizeDecision(
     expression_attributes: { "#decision_id": "decision_id" },
     expression_values: { ":decision_id": decision.id },
   });
-  
-  const requiredVotersCount = votersResponse.ok ? votersResponse.items.length : 0;
-  
+
+  const requiredVotersCount = votersResponse.ok
+    ? votersResponse.items.length
+    : 0;
+
   // Calculate outcome
   const outcome = calculateDecisionOutcome(
     votes,
     decision.success_criteria,
-    requiredVotersCount
+    requiredVotersCount,
   );
-  
+
   // Update decision status
   const newStatus = outcome.passed ? "approved" : "rejected";
   await client.apps.datastore.put({
@@ -230,17 +234,17 @@ async function finalizeDecision(
       updated_at: new Date().toISOString(),
     },
   });
-  
+
   // Unpin message
   await client.pins.remove({
     channel: channel_id,
     timestamp: message_ts,
   });
-  
+
   // Update message with final result
   const statusEmoji = outcome.passed ? "✅" : "❌";
   const statusText = outcome.passed ? "APPROVED" : "REJECTED";
-  
+
   await client.chat.update({
     channel: channel_id,
     ts: message_ts,
@@ -258,7 +262,8 @@ async function finalizeDecision(
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*Status:* ${statusEmoji} ${statusText}\n\n*Reason:* ${outcome.reason}`,
+          text:
+            `*Status:* ${statusEmoji} ${statusText}\n\n*Reason:* ${outcome.reason}`,
         },
       },
       {
@@ -292,17 +297,17 @@ async function finalizeDecision(
     if (userInfo.ok && userInfo.user) {
       userMap.set(
         vote.user_id,
-        userInfo.user.real_name || userInfo.user.name || "Unknown User"
+        userInfo.user.real_name || userInfo.user.name || "Unknown User",
       );
     }
   }
 
   // Generate and post ADR
   const adrMarkdown = generateADRMarkdown(
-    decision as any, // TODO: Fix type mismatch with Decision interface
+    decision,
     votes,
     outcome,
-    userMap
+    userMap,
   );
   const adrBlocks = formatADRForSlack(adrMarkdown);
 

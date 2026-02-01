@@ -2,13 +2,17 @@
 
 ## Overview
 
-ConsensusBot has been successfully migrated from Azure-based infrastructure to Slack Native (ROSI - Run on Slack Infrastructure). This represents a complete architectural redesign to optimize costs, reduce operational complexity, and leverage Slack's native platform capabilities.
+ConsensusBot has been successfully migrated from Azure-based infrastructure to
+Slack Native (ROSI - Run on Slack Infrastructure). This represents a complete
+architectural redesign to optimize costs, reduce operational complexity, and
+leverage Slack's native platform capabilities.
 
 ## Migration Highlights
 
 ### Architecture Transformation
 
 **Before (Azure):**
+
 - Node.js runtime on Azure App Service
 - Azure Functions for scheduled tasks
 - Azure SQL/SQLite for state management
@@ -18,6 +22,7 @@ ConsensusBot has been successfully migrated from Azure-based infrastructure to S
 - Docker for containerization
 
 **After (Slack Native ROSI):**
+
 - Deno runtime on Slack's serverless platform
 - Slack Datastores for all state management
 - Slack Workflows and Functions for business logic
@@ -27,18 +32,19 @@ ConsensusBot has been successfully migrated from Azure-based infrastructure to S
 
 ### Key Metrics
 
-| Metric | Azure | Slack Native | Improvement |
-|--------|-------|--------------|-------------|
-| **Monthly Cost** | $171-266 | $10-50 | 85-95% ↓ |
-| **Maintenance** | 8-12 hrs/mo | 1-2 hrs/mo | 85-92% ↓ |
-| **Secrets to Rotate** | 5-7 | 0 | 100% ↓ |
-| **External Services** | 7 | 0 | 100% ↓ |
-| **Deployment Steps** | 15-20 | 3-5 | 75-83% ↓ |
-| **Infrastructure Code** | ~300 LOC | ~20 LOC | 93% ↓ |
+| Metric                  | Azure       | Slack Native | Improvement |
+| ----------------------- | ----------- | ------------ | ----------- |
+| **Monthly Cost**        | $171-266    | $10-50       | 85-95% ↓    |
+| **Maintenance**         | 8-12 hrs/mo | 1-2 hrs/mo   | 85-92% ↓    |
+| **Secrets to Rotate**   | 5-7         | 0            | 100% ↓      |
+| **External Services**   | 7           | 0            | 100% ↓      |
+| **Deployment Steps**    | 15-20       | 3-5          | 75-83% ↓    |
+| **Infrastructure Code** | ~300 LOC    | ~20 LOC      | 93% ↓       |
 
 ### Cost Breakdown
 
 **Azure (Monthly):**
+
 - App Service: $55
 - Azure Functions: $5-15
 - Key Vault: $3-5
@@ -47,6 +53,7 @@ ConsensusBot has been successfully migrated from Azure-based infrastructure to S
 - **Total: $171-266/month**
 
 **Slack ROSI (Monthly):**
+
 - Workflow executions: $5-15
 - Datastore operations: $5-10
 - Scheduled triggers: $10-15
@@ -89,11 +96,14 @@ ConsensusBot has been successfully migrated from Azure-based infrastructure to S
 ### Simplified Features
 
 **ADR Workflow:**
+
 - **Before**: Automatic push to Azure DevOps repository via API
 - **After**: Markdown posted to Slack thread for manual copy/paste
-- **Rationale**: Eliminates Azure dependency, reduces complexity, adds human review step
+- **Rationale**: Eliminates Azure dependency, reduces complexity, adds human
+  review step
 
 **Voter Reminders:**
+
 - **Before**: Azure Timer Function querying database
 - **After**: Slack scheduled trigger querying Datastores
 - **Rationale**: Native Slack integration, zero configuration
@@ -123,6 +133,7 @@ ConsensusBot/
 ### Archived Files
 
 All Azure-based implementation moved to `archive/old-azure-architecture/`:
+
 - Complete Node.js source code
 - Terraform infrastructure
 - Docker configurations
@@ -131,13 +142,13 @@ All Azure-based implementation moved to `archive/old-azure-architecture/`:
 
 ## Migration Timeline
 
-| Phase | Duration | Activities |
-|-------|----------|------------|
-| **Planning** | 1 week | Architecture review, stakeholder buy-in |
-| **Development** | 2 weeks | Build Slack Native version |
-| **Testing** | 1 week | Manual testing, validation |
-| **Documentation** | 1 week | README, guides, migration docs |
-| **Total** | **5 weeks** | **~40 hours of effort** |
+| Phase             | Duration    | Activities                              |
+| ----------------- | ----------- | --------------------------------------- |
+| **Planning**      | 1 week      | Architecture review, stakeholder buy-in |
+| **Development**   | 2 weeks     | Build Slack Native version              |
+| **Testing**       | 1 week      | Manual testing, validation              |
+| **Documentation** | 1 week      | README, guides, migration docs          |
+| **Total**         | **5 weeks** | **~40 hours of effort**                 |
 
 **Payback Period**: 7-8 months based on cost savings
 
@@ -153,13 +164,14 @@ export const calculateDecisionOutcome = (
   votes: Vote[],
   successCriteria: string,
   requiredVotersCount: number,
-  quorum: number | null = null
+  quorum: number | null = null,
 ): DecisionResult => {
   // Preserved logic with TypeScript types
-}
+};
 ```
 
 Success criteria remain identical:
+
 - **Simple Majority**: >50% of votes must be yes
 - **Supermajority**: ≥66% of required voters must vote yes
 - **Unanimity**: All votes must be yes (abstentions allowed)
@@ -167,11 +179,13 @@ Success criteria remain identical:
 ### State Management Evolution
 
 **Before**: Hybrid approach
+
 - Slack messages for UI
 - Database for persistence
 - State reconstruction from both
 
 **After**: Pure Slack Native
+
 - Slack Datastores for all persistence
 - Message metadata for UI state
 - Native Slack APIs for everything
@@ -179,6 +193,7 @@ Success criteria remain identical:
 ### Deployment Process
 
 **Before (Azure):**
+
 ```bash
 # 15+ step process
 terraform init
@@ -194,6 +209,7 @@ git push
 ```
 
 **After (Slack Native):**
+
 ```bash
 # 3 step process
 slack login
@@ -213,26 +229,26 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ### Improved Experience
 
-✅ **Faster** - No external API calls
-✅ **More reliable** - Slack's 99.99% SLA
-✅ **Better integrated** - Everything in Slack
-✅ **More transparent** - ADRs visible in Slack threads
+✅ **Faster** - No external API calls ✅ **More reliable** - Slack's 99.99% SLA
+✅ **Better integrated** - Everything in Slack ✅ **More transparent** - ADRs
+visible in Slack threads
 
 ## Operational Benefits
 
 ### Simplified Deployment
 
-| Task | Azure | Slack Native |
-|------|-------|--------------|
-| Initial setup | 2-4 hours | 15 minutes |
-| Code deployment | 15-30 min | 2-5 min |
-| Secret rotation | Quarterly | Never |
-| Infrastructure updates | Monthly | Automatic |
-| Monitoring setup | 1-2 hours | Built-in |
+| Task                   | Azure     | Slack Native |
+| ---------------------- | --------- | ------------ |
+| Initial setup          | 2-4 hours | 15 minutes   |
+| Code deployment        | 15-30 min | 2-5 min      |
+| Secret rotation        | Quarterly | Never        |
+| Infrastructure updates | Monthly   | Automatic    |
+| Monitoring setup       | 1-2 hours | Built-in     |
 
 ### Reduced Maintenance
 
 **No longer needed:**
+
 - Server patching
 - Certificate rotation
 - Secret rotation (5-7 secrets)
@@ -242,6 +258,7 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 - CI/CD pipeline maintenance
 
 **Still needed:**
+
 - Code changes/features
 - Slack app permissions updates (rare)
 - Trigger management (minimal)
@@ -249,12 +266,14 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 ## Security Improvements
 
 **Before (Azure):**
+
 - Manual secret rotation every 90 days
 - 5-7 secrets to manage
 - Multiple attack surfaces (App Service, Functions, Key Vault, Storage)
 - Custom authentication implementation
 
 **After (Slack Native):**
+
 - Automatic OAuth token refresh by Slack
 - Zero secrets to manage manually
 - Single attack surface (Slack platform)
@@ -264,8 +283,8 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ### Vendor Lock-in
 
-**Risk**: Tightly coupled to Slack platform
-**Mitigation**:
+**Risk**: Tightly coupled to Slack platform **Mitigation**:
+
 - Core business logic in portable TypeScript
 - Datastore export APIs available
 - Could rebuild on another platform if needed
@@ -273,16 +292,16 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ### Platform Limitations
 
-**Risk**: 30-second function timeout, 1GB Datastore limit
-**Mitigation**:
+**Risk**: 30-second function timeout, 1GB Datastore limit **Mitigation**:
+
 - Current operations complete in <3 seconds
 - 1GB = ~10,000 decisions (200 years at current volume)
 - Archive old decisions if needed
 
 ### Learning Curve
 
-**Risk**: Team needs to learn Deno and Slack SDK
-**Mitigation**:
+**Risk**: Team needs to learn Deno and Slack SDK **Mitigation**:
+
 - TypeScript skills transfer directly
 - 80% API compatibility with Node.js
 - Comprehensive documentation provided
@@ -290,28 +309,29 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ## Success Criteria
 
-✅ **Cost reduction**: 85-90% achieved
-✅ **Operational simplification**: 85% less maintenance
-✅ **Feature parity**: 100% of core features preserved
-✅ **Deployment simplification**: 75% fewer steps
-✅ **Security improvement**: Zero secrets to rotate
-✅ **User experience**: Unchanged for end users
+✅ **Cost reduction**: 85-90% achieved ✅ **Operational simplification**: 85%
+less maintenance ✅ **Feature parity**: 100% of core features preserved ✅
+**Deployment simplification**: 75% fewer steps ✅ **Security improvement**: Zero
+secrets to rotate ✅ **User experience**: Unchanged for end users
 
 ## Next Steps
 
 ### Immediate (Week 1)
+
 - ✅ Code complete
 - ✅ Documentation complete
 - ⏳ Stakeholder review
 - ⏳ Test in development workspace
 
 ### Short-term (Month 1)
+
 - Deploy to production workspace
 - Monitor for issues
 - Train team on Slack CLI
 - Archive Azure infrastructure
 
 ### Long-term (Ongoing)
+
 - Add Deno unit tests
 - Add analytics dashboard
 - Multi-channel support
@@ -320,17 +340,20 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 ## Lessons Learned
 
 ### What Went Well
+
 1. **Slack SDK**: Well-designed, easy to use
 2. **Deno**: TypeScript-first runtime, no build step
 3. **Business logic**: Clean separation made porting easy
 4. **Documentation**: Comprehensive specs enabled smooth migration
 
 ### What Could Be Improved
+
 1. **Testing**: Need to add Deno tests
 2. **Gradual migration**: All-or-nothing approach was risky
 3. **Parallel run**: Should have run both systems longer
 
 ### Best Practices
+
 1. ✅ Keep business logic platform-agnostic
 2. ✅ Document architectural decisions thoroughly
 3. ✅ Measure costs before and after
@@ -348,7 +371,8 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 
 ## Conclusion
 
-The migration to Slack Native (ROSI) architecture has been successfully completed, achieving all primary objectives:
+The migration to Slack Native (ROSI) architecture has been successfully
+completed, achieving all primary objectives:
 
 - **90% cost reduction** ($1,812-2,712/year savings)
 - **85% maintenance reduction** (6-10 hours/month saved)
