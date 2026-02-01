@@ -1,0 +1,57 @@
+{
+  "display_information": {
+    "name": "ConsensusBot",
+    "description": "Facilitate team decision-making through collaborative consensus building",
+    "background_color": "#2c2d30",
+    "long_description": "ConsensusBot helps teams make decisions collaboratively by providing structured voting mechanisms, automated reminders, and automatic generation of Architecture Decision Records (ADRs). Features include configurable success criteria (Simple Majority, Supermajority, Unanimity), deadline enforcement, and Slack-native state management."
+  },
+  "features": {
+    "app_home": {
+      "home_tab_enabled": true,
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": false
+    },
+    "bot_user": {
+      "display_name": "ConsensusBot",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/consensus",
+        "description": "Create a new consensus decision",
+        "usage_hint": "[help|status]",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "chat:write",
+        "chat:write.public",
+        "commands",
+        "pins:write",
+        "users:read",
+        "im:write",
+        "app_mentions:read"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": [
+        "app_home_opened",
+        "app_mention"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  },
+  "functions": {},
+  "workflows": {},
+  "datastores": {}
+}
