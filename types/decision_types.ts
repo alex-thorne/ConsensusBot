@@ -9,6 +9,18 @@
  * Complete Decision Record from Datastore
  * This type represents the full decision object with all fields
  * that are stored in the datastore and used throughout the application.
+ *
+ * @property id - Unique identifier (message timestamp)
+ * @property name - Decision name/title
+ * @property proposal - Detailed description of the decision
+ * @property success_criteria - Voting criteria: "simple_majority", "super_majority", or "unanimous"
+ * @property deadline - ISO 8601 formatted deadline (e.g., "2026-02-15T23:59:59.000Z")
+ * @property channel_id - Slack channel ID where decision was posted
+ * @property creator_id - Slack user ID of decision creator
+ * @property message_ts - Slack message timestamp
+ * @property status - Decision status: "active", "approved", or "rejected"
+ * @property created_at - ISO 8601 formatted creation timestamp
+ * @property updated_at - ISO 8601 formatted last update timestamp
  */
 export interface DecisionRecord {
   id: string;
