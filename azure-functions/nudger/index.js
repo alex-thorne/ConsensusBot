@@ -5,6 +5,7 @@
  * reminder DMs to voters who haven't cast their votes on active decisions.
  * 
  * Schedule: "0 0 9 * * 1-5" (cron format)
+ * - Second: 0
  * - Minute: 0
  * - Hour: 9 (9 AM UTC)
  * - Day of month: * (every day)

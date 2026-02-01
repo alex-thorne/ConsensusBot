@@ -12,8 +12,6 @@
  */
 
 const logger = require('./logger');
-const fs = require('fs');
-const path = require('path');
 
 /**
  * Azure DevOps REST API client configuration
@@ -174,10 +172,6 @@ const generateADRMarkdown = (decision, votes, outcome) => {
   });
   
   try {
-    // Load ADR template
-    const templatePath = path.join(__dirname, '../../docs/templates/adr-template.md');
-    let template = fs.readFileSync(templatePath, 'utf-8');
-    
     // Format decision date
     const decisionDate = new Date(decision.updated_at || decision.created_at);
     const formattedDate = decisionDate.toISOString().split('T')[0];
