@@ -14,48 +14,48 @@
  */
 
 const logger = require('./logger');
-const db = require('../database/db');
+const slackState = require('./slackState');
 
 /**
  * Get all open decisions that need votes
  * Returns decisions with incomplete voting
  * 
- * @returns {Array<object>} Array of decisions with vote status
+ * @param {object} client - Slack client instance
+ * @param {string} channelId - Channel ID to check for decisions
+ * @returns {Promise<Array<object>>} Array of decisions with vote status
  */
-const getDecisionsNeedingVotes = () => {
-  logger.info('Fetching decisions needing votes');
+const getDecisionsNeedingVotes = async (client, channelId) => {
+  logger.info('Fetching decisions needing votes from Slack');
   
   try {
-    // Get all open (active) decisions
-    const openDecisions = db.getOpenDecisions();
+    // Get all open (active) decisions from pinned messages
+    const openDecisions = await slackState.getOpenDecisions(client, channelId);
     
     const decisionsNeedingVotes = [];
     
     for (const decision of openDecisions) {
-      // Get voters and votes for this decision
-      const voters = db.getVoters(decision.id);
-      const votes = db.getVotes(decision.id);
-      const missingVoters = db.getMissingVoters(decision.id);
+      // Check for missing voters
+      const missingVoters = slackState.getMissingVoters(decision);
       
       // If there are missing voters, include this decision
       if (missingVoters.length > 0) {
         decisionsNeedingVotes.push({
           ...decision,
-          requiredVotersCount: voters.length,
-          actualVotesCount: votes.length,
+          requiredVotersCount: decision.voters.length,
+          actualVotesCount: decision.votes.length,
           missingVotersCount: missingVoters.length,
           missingVoters: missingVoters
         });
       }
     }
     
-    logger.info('Decisions needing votes retrieved', {
+    logger.info('Decisions needing votes retrieved from Slack', {
       count: decisionsNeedingVotes.length
     });
     
     return decisionsNeedingVotes;
   } catch (error) {
-    logger.error('Error fetching decisions needing votes', {
+    logger.error('Error fetching decisions needing votes from Slack', {
       error: error.message,
       stack: error.stack
     });
@@ -76,8 +76,8 @@ const sendVoterReminder = async (client, userId, decision, messageUrl) => {
   try {
     logger.info('Sending voter reminder', {
       userId,
-      decisionId: decision.id,
-      decisionName: decision.name
+      decisionName: decision.name,
+      messageTs: decision.messageTs
     });
     
     // Calculate time until deadline
@@ -141,7 +141,7 @@ const sendVoterReminder = async (client, userId, decision, messageUrl) => {
           elements: [
             {
               type: 'mrkdwn',
-              text: `Decision ID: ${decision.id} | Created by <@${decision.creator_id}>`
+              text: `Created by <@${decision.creatorId}>`
             }
           ]
         }
@@ -150,7 +150,7 @@ const sendVoterReminder = async (client, userId, decision, messageUrl) => {
     
     logger.info('Reminder sent successfully', {
       userId,
-      decisionId: decision.id
+      messageTs: decision.messageTs
     });
     
     return true;
@@ -159,7 +159,7 @@ const sendVoterReminder = async (client, userId, decision, messageUrl) => {
       error: error.message,
       stack: error.stack,
       userId,
-      decisionId: decision.id
+      messageTs: decision.messageTs
     });
     return false;
   }
@@ -169,47 +169,44 @@ const sendVoterReminder = async (client, userId, decision, messageUrl) => {
  * Send reminders to all missing voters for a decision
  * 
  * @param {object} client - Slack client instance
- * @param {number} decisionId - Decision ID
+ * @param {object} decision - Decision object (from Slack state)
  * @returns {Promise<object>} Summary of reminders sent
  */
-const sendRemindersForDecision = async (client, decisionId) => {
+const sendRemindersForDecision = async (client, decision) => {
   try {
-    logger.info('Sending reminders for decision', { decisionId });
-    
-    const decision = db.getDecision(decisionId);
-    if (!decision) {
-      logger.error('Decision not found', { decisionId });
-      return { success: false, error: 'Decision not found' };
-    }
+    logger.info('Sending reminders for decision', { 
+      messageTs: decision.messageTs,
+      name: decision.name
+    });
     
     // Only send reminders for active decisions
     if (decision.status !== 'active') {
       logger.warn('Cannot send reminders for non-active decision', {
-        decisionId,
+        messageTs: decision.messageTs,
         status: decision.status
       });
       return { success: false, error: 'Decision is not active' };
     }
     
-    const missingVoters = db.getMissingVoters(decisionId);
+    const missingVoters = slackState.getMissingVoters(decision);
     
     if (missingVoters.length === 0) {
-      logger.info('No missing voters for decision', { decisionId });
+      logger.info('No missing voters for decision', { messageTs: decision.messageTs });
       return { success: true, remindersSent: 0 };
     }
     
     // Construct message URL
-    const messageUrl = decision.message_ts 
-      ? `https://slack.com/archives/${decision.channel_id}/p${decision.message_ts.replace('.', '')}`
+    const messageUrl = decision.messageTs 
+      ? `https://slack.com/archives/${decision.channelId}/p${decision.messageTs.replace('.', '')}`
       : null;
     
     let successCount = 0;
     let failureCount = 0;
     
-    for (const voter of missingVoters) {
+    for (const voterId of missingVoters) {
       const success = await sendVoterReminder(
         client, 
-        voter.user_id, 
+        voterId, 
         decision, 
         messageUrl
       );
@@ -225,7 +222,7 @@ const sendRemindersForDecision = async (client, decisionId) => {
     }
     
     logger.info('Reminders completed for decision', {
-      decisionId,
+      messageTs: decision.messageTs,
       totalMissing: missingVoters.length,
       successCount,
       failureCount
@@ -241,7 +238,7 @@ const sendRemindersForDecision = async (client, decisionId) => {
     logger.error('Error sending reminders for decision', {
       error: error.message,
       stack: error.stack,
-      decisionId
+      messageTs: decision.messageTs
     });
     return { success: false, error: error.message };
   }
@@ -252,13 +249,14 @@ const sendRemindersForDecision = async (client, decisionId) => {
  * This function should be called by a scheduler (e.g., Azure Timer Function)
  * 
  * @param {object} client - Slack client instance
+ * @param {string} channelId - Channel ID to check for decisions
  * @returns {Promise<object>} Summary of all reminders sent
  */
-const runNudger = async (client) => {
-  logger.info('Starting nudger run');
+const runNudger = async (client, channelId) => {
+  logger.info('Starting nudger run for channel', { channelId });
   
   try {
-    const decisionsNeedingVotes = getDecisionsNeedingVotes();
+    const decisionsNeedingVotes = await getDecisionsNeedingVotes(client, channelId);
     
     if (decisionsNeedingVotes.length === 0) {
       logger.info('No decisions need reminders');
@@ -277,7 +275,7 @@ const runNudger = async (client) => {
     let totalFailed = 0;
     
     for (const decision of decisionsNeedingVotes) {
-      const result = await sendRemindersForDecision(client, decision.id);
+      const result = await sendRemindersForDecision(client, decision);
       
       if (result.success) {
         totalRemindersSent += result.remindersSent || 0;

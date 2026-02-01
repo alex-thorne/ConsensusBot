@@ -14,6 +14,12 @@ const createVotingMessage = (decision, voterIds) => {
   // Format voter mentions
   const voterMentions = voterIds.map(id => `<@${id}>`).join(', ');
   
+  // Use message timestamp as unique ID if available, otherwise use sanitized name
+  // Message timestamp is guaranteed unique within a channel
+  const uniqueId = decision.messageTs 
+    ? decision.messageTs.replace('.', '_')
+    : decision.name.replace(/\s+/g, '_').toLowerCase();
+  
   return {
     blocks: [
       {
@@ -66,7 +72,7 @@ const createVotingMessage = (decision, voterIds) => {
       },
       {
         type: 'actions',
-        block_id: `voting_actions_${decision.id}`,
+        block_id: `voting_actions_${uniqueId}`,
         elements: [
           {
             type: 'button',
@@ -76,8 +82,8 @@ const createVotingMessage = (decision, voterIds) => {
               emoji: true
             },
             style: 'primary',
-            action_id: `vote_yes_${decision.id}`,
-            value: `${decision.id}`
+            action_id: `vote_yes_${uniqueId}`,
+            value: 'yes'
           },
           {
             type: 'button',
@@ -87,8 +93,8 @@ const createVotingMessage = (decision, voterIds) => {
               emoji: true
             },
             style: 'danger',
-            action_id: `vote_no_${decision.id}`,
-            value: `${decision.id}`
+            action_id: `vote_no_${uniqueId}`,
+            value: 'no'
           },
           {
             type: 'button',
@@ -97,8 +103,8 @@ const createVotingMessage = (decision, voterIds) => {
               text: '⏸️ Abstain',
               emoji: true
             },
-            action_id: `vote_abstain_${decision.id}`,
-            value: `${decision.id}`
+            action_id: `vote_abstain_${uniqueId}`,
+            value: 'abstain'
           }
         ]
       },
@@ -107,7 +113,7 @@ const createVotingMessage = (decision, voterIds) => {
         elements: [
           {
             type: 'mrkdwn',
-            text: `Created by <@${decision.creator_id}> • Decision ID: ${decision.id}`
+            text: `Created by <@${decision.creator_id}>`
           }
         ]
       }

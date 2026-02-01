@@ -57,7 +57,7 @@ resource "azurerm_application_insights" "consensusbot" {
   }
 }
 
-# Storage Account for Azure Functions and database persistence
+# Storage Account for Azure Functions
 resource "azurerm_storage_account" "consensusbot" {
   name                     = "${var.project_name}${var.environment}storage"
   resource_group_name      = azurerm_resource_group.consensusbot.name
@@ -73,13 +73,6 @@ resource "azurerm_storage_account" "consensusbot" {
     Environment = var.environment
     Project     = var.project_name
   }
-}
-
-# Storage Container for SQLite database backups
-resource "azurerm_storage_container" "database_backups" {
-  name                  = "database-backups"
-  storage_account_name  = azurerm_storage_account.consensusbot.name
-  container_access_type = "private"
 }
 
 # Storage Container for ADR documents (optional local backup)
@@ -208,9 +201,6 @@ resource "azurerm_linux_function_app" "consensusbot" {
     AZURE_DEVOPS_ORGANIZATION = var.azure_devops_organization
     AZURE_DEVOPS_PROJECT      = var.azure_devops_project
     AZURE_DEVOPS_REPOSITORY   = var.azure_devops_repository
-    
-    # Database configuration
-    DATABASE_PATH = "/home/data/consensus.db"
     
     # Storage configuration for backups
     AZURE_STORAGE_CONNECTION_STRING = azurerm_storage_account.consensusbot.primary_connection_string

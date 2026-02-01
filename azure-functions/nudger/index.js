@@ -15,7 +15,7 @@
  * Environment Variables Required:
  * - SLACK_BOT_TOKEN: Bot token for Slack API
  * - SLACK_SIGNING_SECRET: Signing secret for Slack verification
- * - DATABASE_PATH: Path to SQLite database file
+ * - NUDGER_CHANNEL_ID: Channel ID to check for active decisions (optional, can be configured per deployment)
  * 
  * @param {object} context - Azure Function context
  * @param {object} nudgerTimer - Timer trigger information
@@ -69,13 +69,19 @@ module.exports = async function (context, nudgerTimer) {
       throw new Error('SLACK_SIGNING_SECRET environment variable is not set');
     }
     
+    // Get channel ID from environment or use a default
+    const channelId = process.env.NUDGER_CHANNEL_ID;
+    if (!channelId) {
+      throw new Error('NUDGER_CHANNEL_ID environment variable is not set. Add NUDGER_CHANNEL_ID=C123456789 to your Azure Function configuration, where C123456789 is your Slack channel ID.');
+    }
+    
     // Initialize Slack client
     context.log('Initializing Slack client...');
     const slackClient = initializeSlackClient();
     
     // Run the nudger
-    context.log('Starting nudger run...');
-    const result = await runNudger(slackClient);
+    context.log(`Starting nudger run for channel: ${channelId}...`);
+    const result = await runNudger(slackClient, channelId);
     
     if (result.success) {
       context.log('✅ Nudger completed successfully:', {
