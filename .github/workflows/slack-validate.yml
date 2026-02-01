@@ -1,0 +1,52 @@
+name: Slack Manifest Validation
+
+# Validate Slack manifest on pull requests and pushes to development branch
+on:
+  push:
+    branches: [development]
+  pull_request:
+    branches: [development]
+
+jobs:
+  validate:
+    name: Validate Slack Manifest
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Deno environment
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      # Validate manifest.ts structure
+      - name: Validate manifest structure
+        run: |
+          echo "Checking manifest.ts syntax..."
+          deno check manifest.ts
+
+      # Check for required files
+      - name: Verify required files
+        run: |
+          echo "Checking for required Slack Native files..."
+          test -f manifest.ts || (echo "manifest.ts not found" && exit 1)
+          test -f deno.json || (echo "deno.json not found" && exit 1)
+          test -f slack.json || (echo "slack.json not found" && exit 1)
+          test -d datastores || (echo "datastores directory not found" && exit 1)
+          test -d functions || (echo "functions directory not found" && exit 1)
+          test -d workflows || (echo "workflows directory not found" && exit 1)
+          test -d triggers || (echo "triggers directory not found" && exit 1)
+          echo "All required files present ✓"
+
+      # Validate JSON files
+      - name: Validate JSON files
+        run: |
+          echo "Validating deno.json..."
+          cat deno.json | jq empty
+          echo "Validating slack.json..."
+          cat slack.json | jq empty
+          echo "JSON files valid ✓"
