@@ -1,0 +1,16 @@
+# Slack Native files
+.slack/
+
+# Archives
+archive/
+
+# Development
+*.log
+.DS_Store
+tmp/
+temp/
+
+# Documentation only
+MIGRATION_GUIDE.md
+DEVELOPMENT.md
+DEPLOYMENT.md
