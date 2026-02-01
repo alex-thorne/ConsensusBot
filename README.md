@@ -467,6 +467,7 @@ Additional documentation can be found in the `docs/` directory:
 ### Core Documentation
 - [Local Setup Guide](docs/LOCAL_SETUP.md) - Getting started with local development
 - [Docker Deployment](docs/DOCKER.md) - Running with Docker
+- [Decision Finalization](docs/FINALIZATION.md) - Automatic decision finalization workflow
 - [Voting Backend](docs/VOTING_BACKEND.md) - Voting validation and decision outcome logic
 - [Reminder System Deployment](docs/REMINDER_DEPLOYMENT.md) - Automated voter reminder system
 - [Azure DevOps Integration](docs/AZURE_DEVOPS.md) - ADR generation and repository integration

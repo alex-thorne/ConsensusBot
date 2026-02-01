@@ -331,6 +331,24 @@ expect(result.success).toBe(true);
 - Ensure PAT is for the correct organization
 - Regenerate PAT if compromised
 
+**Test Authentication:**
+```javascript
+const { createAzureDevOpsClient } = require('./src/utils/azureDevOps');
+
+async function testAuth() {
+  try {
+    const client = createAzureDevOpsClient();
+    // This will test getting the latest commit SHA
+    const sha = await client.getLatestCommitSha('main');
+    console.log('✅ Authentication successful. Latest commit:', sha);
+  } catch (error) {
+    console.error('❌ Authentication failed:', error.message);
+  }
+}
+
+testAuth();
+```
+
 ### Repository Not Found
 
 **Symptom**: 404 Not Found errors
@@ -341,6 +359,18 @@ expect(result.success).toBe(true);
 - Ensure PAT has access to the project and repository
 - Verify repository name is case-sensitive match
 
+**Verify Configuration:**
+```bash
+# Check environment variables
+echo "Org: $AZURE_DEVOPS_ORG"
+echo "Project: $AZURE_DEVOPS_PROJECT"  
+echo "Repo: $AZURE_DEVOPS_REPO"
+
+# Test URL (should return 200 OK with valid PAT)
+curl -u :$AZURE_DEVOPS_PAT \
+  "https://dev.azure.com/$AZURE_DEVOPS_ORG/$AZURE_DEVOPS_PROJECT/_apis/git/repositories/$AZURE_DEVOPS_REPO?api-version=7.0"
+```
+
 ### File Already Exists
 
 **Symptom**: Conflict errors when pushing ADR
@@ -350,15 +380,59 @@ expect(result.success).toBe(true);
 - If re-running for same decision, consider incrementing ID or using different branch
 - Check existing ADRs in repository to avoid duplicates
 
+**Note**: The current implementation uses `changeType: 'add'` which creates new files. To update existing files, change to `'edit'` and get the current file version.
+
 ### Rate Limiting
 
 **Symptom**: 429 Too Many Requests errors
 
 **Solutions**:
 - Add delays between batch operations (recommended: 1 second between pushes)
-- Implement exponential backoff for retries
+- Implement exponential backoff for retries (already built-in with 3 retries)
 - Consider upgrading Azure DevOps plan for higher rate limits
 - Batch operations during off-peak hours
+
+**Built-in Retry Logic:**
+The Azure DevOps client automatically retries on network errors:
+- Maximum 3 attempts
+- Exponential backoff: 1s, 2s, 4s (capped at 5s)
+- No retry on 401, 403, 400 errors (authentication/validation)
+
+### Network/Timeout Errors
+
+**Symptom**: `ECONNREFUSED`, `ETIMEDOUT`, or `getaddrinfo ENOTFOUND` errors
+
+**Solutions**:
+- Check network connectivity to `dev.azure.com`
+- Verify firewall rules allow outbound HTTPS
+- Check proxy settings if behind corporate proxy
+- Increase timeout in client configuration (default: 30 seconds for push, 10 seconds for get)
+
+**Test Connectivity:**
+```bash
+# Test network connectivity
+curl -I https://dev.azure.com
+
+# Test with authentication
+curl -u :$AZURE_DEVOPS_PAT \
+  "https://dev.azure.com/$AZURE_DEVOPS_ORG/$AZURE_DEVOPS_PROJECT/_apis/git/repositories?api-version=7.0"
+```
+
+### Branch Not Found
+
+**Symptom**: Error getting latest commit SHA - branch not found
+
+**Solutions**:
+- Verify the branch exists in the repository
+- Check branch name is correct (case-sensitive)
+- Ensure you're using the correct branch name (default: 'main')
+- Create the branch if it doesn't exist
+
+**Create Branch:**
+```bash
+# In Azure DevOps, you can create a branch through the UI or API
+# Or push an initial commit to create the branch
+```
 
 ## Security Best Practices
 
