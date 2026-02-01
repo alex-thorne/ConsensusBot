@@ -4,6 +4,41 @@ import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
 
+// Type definitions for Slack API responses
+interface VoteItem {
+  user_id: string;
+  [key: string]: unknown;
+}
+
+interface VoterItem {
+  user_id: string;
+  [key: string]: unknown;
+}
+
+interface DecisionItem {
+  id: string;
+  name: string;
+  deadline: string;
+  channel_id: string;
+  [key: string]: unknown;
+}
+
+interface SlackClient {
+  apps: {
+    datastore: {
+      query: (params: Record<string, unknown>) => Promise<{
+        ok: boolean;
+        items: unknown[];
+      }>;
+    };
+  };
+  chat: {
+    postMessage: (params: Record<string, unknown>) => Promise<{
+      ok: boolean;
+    }>;
+  };
+}
+
 /**
  * Function to send reminders to voters who haven't voted
  */
@@ -75,12 +110,12 @@ export default SlackFunction(
       });
       
       const votedUserIds = new Set(
-        votesResponse.ok ? votesResponse.items.map((v: any) => v.user_id) : []
+        votesResponse.ok ? votesResponse.items.map((v) => (v as VoteItem).user_id) : []
       );
       
       // Find missing voters
       const missingVoters = votersResponse.items.filter(
-        (voter: any) => !votedUserIds.has(voter.user_id)
+        (voter) => !votedUserIds.has((voter as VoterItem).user_id)
       );
       
       // Send reminders to missing voters
@@ -107,9 +142,9 @@ export default SlackFunction(
  * Send a reminder DM to a voter
  */
 async function sendReminderDM(
-  client: any,
+  client: SlackClient,
   userId: string,
-  decision: any,
+  decision: DecisionItem,
 ): Promise<boolean> {
   try {
     const result = await client.chat.postMessage({

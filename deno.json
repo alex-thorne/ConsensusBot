@@ -12,5 +12,11 @@
     "jsx": "react",
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment"
+  },
+  "lint": {
+    "exclude": ["archive/"]
+  },
+  "fmt": {
+    "exclude": ["archive/"]
   }
 }

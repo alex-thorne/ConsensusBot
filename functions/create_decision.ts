@@ -3,6 +3,19 @@ import DecisionDatastore from "../datastores/decisions.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { getDefaultDeadline } from "../utils/date_utils.ts";
 
+// Type definitions for Block Kit elements
+interface BlockElement {
+  type: string;
+  value?: string;
+  [key: string]: unknown;
+}
+
+interface Block {
+  type: string;
+  elements?: BlockElement[];
+  [key: string]: unknown;
+}
+
 /**
  * Function to create a new decision and post voting message
  */
@@ -191,17 +204,18 @@ export default SlackFunction(
       channel: inputs.channel_id,
       ts: message_ts,
       text: `New Decision: ${inputs.decision_name}`,
-      blocks: message.message?.blocks?.map((block: any) => {
-        if (block.type === "actions") {
+      blocks: message.message?.blocks?.map((block) => {
+        const typedBlock = block as Block;
+        if (typedBlock.type === "actions") {
           return {
-            ...block,
-            elements: block.elements.map((element: any) => ({
+            ...typedBlock,
+            elements: typedBlock.elements?.map((element) => ({
               ...element,
               value: decision_id,
             })),
           };
         }
-        return block;
+        return typedBlock;
       }),
     });
     

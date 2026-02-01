@@ -6,6 +6,61 @@ import { calculateDecisionOutcome } from "../utils/decision_logic.ts";
 import { generateADRMarkdown, formatADRForSlack } from "../utils/adr_generator.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
 
+// Type definitions for Slack API
+interface SlackClient {
+  apps: {
+    datastore: {
+      get: (params: Record<string, unknown>) => Promise<{
+        ok: boolean;
+        item?: Record<string, unknown>;
+      }>;
+      put: (params: Record<string, unknown>) => Promise<{
+        ok: boolean;
+      }>;
+      query: (params: Record<string, unknown>) => Promise<{
+        ok: boolean;
+        items: unknown[];
+      }>;
+    };
+  };
+  chat: {
+    postEphemeral: (params: Record<string, unknown>) => Promise<{
+      ok: boolean;
+    }>;
+    update: (params: Record<string, unknown>) => Promise<{
+      ok: boolean;
+    }>;
+    postMessage: (params: Record<string, unknown>) => Promise<{
+      ok: boolean;
+    }>;
+  };
+  pins: {
+    remove: (params: Record<string, unknown>) => Promise<{
+      ok: boolean;
+    }>;
+  };
+  users: {
+    info: (params: { user: string }) => Promise<{
+      ok: boolean;
+      user?: {
+        real_name?: string;
+        name?: string;
+      };
+    }>;
+  };
+}
+
+interface DecisionRecord {
+  id: string;
+  name: string;
+  status: string;
+  success_criteria: string;
+  deadline: string;
+  channel_id: string;
+  creator_id: string;
+  [key: string]: unknown;
+}
+
 /**
  * Function to record a vote on a decision
  */
@@ -134,7 +189,7 @@ export default SlackFunction(
  * Check if decision should be finalized
  */
 async function checkIfShouldFinalize(
-  client: any,
+  client: SlackClient,
   decision_id: string,
   deadline: string
 ): Promise<boolean> {
@@ -169,8 +224,8 @@ async function checkIfShouldFinalize(
  * Finalize a decision and generate ADR
  */
 async function finalizeDecision(
-  client: any,
-  decision: any,
+  client: SlackClient,
+  decision: DecisionRecord,
   channel_id: string,
   message_ts: string
 ) {
