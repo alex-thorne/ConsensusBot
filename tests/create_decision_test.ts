@@ -4,10 +4,7 @@
  * Tests the core functionality of creating a decision with proper type safety
  */
 
-import {
-  assertEquals,
-  assertExists,
-} from "@std/assert";
+import { assertEquals, assertExists } from "@std/assert";
 import { SlackBlock, SlackClient } from "../types/slack_types.ts";
 
 // Mock Slack Client

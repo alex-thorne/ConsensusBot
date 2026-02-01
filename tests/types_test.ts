@@ -4,10 +4,7 @@
  * Ensures all type definitions are consistent and complete
  */
 
-import {
-  assertEquals,
-  assertExists,
-} from "@std/assert";
+import { assertEquals, assertExists } from "@std/assert";
 import {
   DecisionItem,
   DecisionRecord,

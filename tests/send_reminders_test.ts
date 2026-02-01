@@ -4,10 +4,7 @@
  * Tests the reminder functionality with proper type safety
  */
 
-import {
-  assertEquals,
-  assertExists,
-} from "@std/assert";
+import { assertEquals, assertExists } from "@std/assert";
 import {
   DecisionRecord,
   VoteRecord,
