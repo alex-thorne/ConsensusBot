@@ -1,6 +1,7 @@
 {
   "tasks": {
-    "start": "deno run --allow-all --watch=static/,routes/ dev.ts"
+    "start": "deno run --allow-all --watch=static/,routes/ dev.ts",
+    "test": "deno test --allow-all tests/"
   },
   "imports": {
     "deno-slack-sdk/": "https://deno.land/x/deno_slack_sdk@2.7.0/",
@@ -17,6 +18,9 @@
     "exclude": ["archive/"]
   },
   "fmt": {
+    "exclude": ["archive/"]
+  },
+  "test": {
     "exclude": ["archive/"]
   }
 }
