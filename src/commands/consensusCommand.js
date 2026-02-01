@@ -8,7 +8,7 @@
 
 const logger = require('../utils/logger');
 const { createConsensusModal } = require('../modals/consensusModal');
-const db = require('../database/db');
+const slackState = require('../utils/slackState');
 const { createVotingMessage } = require('../utils/votingMessage');
 
 /**
@@ -211,29 +211,39 @@ const registerConsensusCommand = (app) => {
         throw new Error('Channel ID not available');
       }
 
-      // Save decision to database
-      const decisionId = db.insertDecision({
+      // Prepare decision data
+      const decisionData = {
         name: decisionName,
         proposal: proposal,
         success_criteria: successCriteria,
         deadline: deadline,
         channel_id: channelId,
-        creator_id: body.user.id
+        creator_id: body.user.id,
+        voters: requiredVoters,
+        status: 'active'
+      };
+
+      logger.info('Decision data prepared', {
+        name: decisionName,
+        votersCount: requiredVoters.length
       });
 
-      // Save voters to database
-      db.insertVoters(decisionId, requiredVoters);
-
-      // Get the full decision from database
-      const decision = db.getDecision(decisionId);
-
-      logger.info('Decision created successfully', {
-        decisionId,
-        name: decisionName
-      });
-
-      // Post voting message to channel
-      const votingMessage = createVotingMessage(decision, requiredVoters);
+      // Post voting message to channel with metadata
+      const votingMessage = createVotingMessage(decisionData, requiredVoters);
+      
+      // Add metadata to the message for state reconstruction
+      votingMessage.metadata = {
+        event_type: 'decision_created',
+        event_payload: {
+          name: decisionData.name,
+          proposal: decisionData.proposal,
+          success_criteria: decisionData.success_criteria,
+          deadline: decisionData.deadline,
+          creator_id: decisionData.creator_id,
+          voters: requiredVoters,
+          status: 'active'
+        }
+      };
       
       try {
         const result = await client.chat.postMessage({
@@ -241,28 +251,24 @@ const registerConsensusCommand = (app) => {
           ...votingMessage
         });
 
-        // Update decision with message timestamp
-        db.updateDecisionMessage(decisionId, result.ts);
-
-        // Pin the message
+        // Pin the message for easy discovery
         await client.pins.add({
           channel: channelId,
           timestamp: result.ts
         });
 
         logger.info('Voting message posted and pinned', {
-          decisionId,
           messageTs: result.ts,
-          channelId
+          channelId,
+          name: decisionName
         });
 
       } catch (postError) {
         logger.error('Error posting voting message', {
           error: postError.message,
-          decisionId
+          name: decisionName
         });
-        // Decision is saved, but message posting failed
-        // Could implement retry logic here
+        // Message posting failed - could implement retry logic here
       }
 
     } catch (error) {
@@ -283,77 +289,64 @@ const registerConsensusCommand = (app) => {
  */
 const registerVotingHandlers = (app) => {
   // Handle Yes vote
-  app.action(/^vote_yes_(\d+)$/, async ({ ack, body, client, action }) => {
+  app.action(/^vote_yes_/, async ({ ack, body, client, action }) => {
     try {
       await ack();
       
-      const decisionId = parseInt(action.value);
       const userId = body.user.id;
+      const channelId = body.channel.id;
+      const messageTs = body.message.ts;
+      
+      // Get decision state from Slack
+      const decisionState = await slackState.getDecisionState(client, channelId, messageTs);
       
       // Check if user is eligible to vote
-      const isEligible = db.isUserEligibleToVote(decisionId, userId);
+      const isEligible = slackState.isUserEligibleToVote(decisionState, userId);
       
       if (!isEligible) {
         logger.warn('Ineligible user attempted to vote', {
-          decisionId,
           userId,
-          voteType: 'yes'
+          voteType: 'yes',
+          messageTs
         });
         
         await client.chat.postEphemeral({
-          channel: body.channel.id,
+          channel: channelId,
           user: userId,
           text: '⚠️ You are not eligible to vote on this decision. Only required voters can cast votes.'
         });
         return;
       }
       
-      // Get decision to check if it's still active
-      const decision = db.getDecision(decisionId);
-      
-      if (!decision) {
-        logger.error('Decision not found', { decisionId });
-        await client.chat.postEphemeral({
-          channel: body.channel.id,
-          user: userId,
-          text: '❌ Decision not found.'
-        });
-        return;
-      }
-      
-      if (decision.status !== 'active') {
+      if (decisionState.status !== 'active') {
         logger.warn('Vote attempted on non-active decision', {
-          decisionId,
           userId,
-          status: decision.status
+          status: decisionState.status,
+          messageTs
         });
         
         await client.chat.postEphemeral({
-          channel: body.channel.id,
+          channel: channelId,
           user: userId,
-          text: `⚠️ This decision is no longer active (status: ${decision.status}). Votes cannot be changed.`
+          text: `⚠️ This decision is no longer active (status: ${decisionState.status}). Votes cannot be changed.`
         });
         return;
       }
       
       logger.info('Vote cast', {
-        decisionId,
         userId,
-        voteType: 'yes'
+        voteType: 'yes',
+        messageTs
       });
       
-      // Save vote to database
-      db.upsertVote({
-        decision_id: decisionId,
-        user_id: userId,
-        vote_type: 'yes'
-      });
+      // Record vote in Slack thread
+      await slackState.recordVote(client, channelId, messageTs, userId, 'yes');
       
       // Send confirmation
       await client.chat.postEphemeral({
-        channel: body.channel.id,
+        channel: channelId,
         user: userId,
-        text: `✅ Your vote "Yes" has been recorded for: ${decision.name}`
+        text: `✅ Your vote "Yes" has been recorded for: ${decisionState.name}`
       });
       
     } catch (error) {
@@ -378,77 +371,64 @@ const registerVotingHandlers = (app) => {
   });
   
   // Handle No vote
-  app.action(/^vote_no_(\d+)$/, async ({ ack, body, client, action }) => {
+  app.action(/^vote_no_/, async ({ ack, body, client, action }) => {
     try {
       await ack();
       
-      const decisionId = parseInt(action.value);
       const userId = body.user.id;
+      const channelId = body.channel.id;
+      const messageTs = body.message.ts;
+      
+      // Get decision state from Slack
+      const decisionState = await slackState.getDecisionState(client, channelId, messageTs);
       
       // Check if user is eligible to vote
-      const isEligible = db.isUserEligibleToVote(decisionId, userId);
+      const isEligible = slackState.isUserEligibleToVote(decisionState, userId);
       
       if (!isEligible) {
         logger.warn('Ineligible user attempted to vote', {
-          decisionId,
           userId,
-          voteType: 'no'
+          voteType: 'no',
+          messageTs
         });
         
         await client.chat.postEphemeral({
-          channel: body.channel.id,
+          channel: channelId,
           user: userId,
           text: '⚠️ You are not eligible to vote on this decision. Only required voters can cast votes.'
         });
         return;
       }
       
-      // Get decision to check if it's still active
-      const decision = db.getDecision(decisionId);
-      
-      if (!decision) {
-        logger.error('Decision not found', { decisionId });
-        await client.chat.postEphemeral({
-          channel: body.channel.id,
-          user: userId,
-          text: '❌ Decision not found.'
-        });
-        return;
-      }
-      
-      if (decision.status !== 'active') {
+      if (decisionState.status !== 'active') {
         logger.warn('Vote attempted on non-active decision', {
-          decisionId,
           userId,
-          status: decision.status
+          status: decisionState.status,
+          messageTs
         });
         
         await client.chat.postEphemeral({
-          channel: body.channel.id,
+          channel: channelId,
           user: userId,
-          text: `⚠️ This decision is no longer active (status: ${decision.status}). Votes cannot be changed.`
+          text: `⚠️ This decision is no longer active (status: ${decisionState.status}). Votes cannot be changed.`
         });
         return;
       }
       
       logger.info('Vote cast', {
-        decisionId,
         userId,
-        voteType: 'no'
+        voteType: 'no',
+        messageTs
       });
       
-      // Save vote to database
-      db.upsertVote({
-        decision_id: decisionId,
-        user_id: userId,
-        vote_type: 'no'
-      });
+      // Record vote in Slack thread
+      await slackState.recordVote(client, channelId, messageTs, userId, 'no');
       
       // Send confirmation
       await client.chat.postEphemeral({
-        channel: body.channel.id,
+        channel: channelId,
         user: userId,
-        text: `❌ Your vote "No" has been recorded for: ${decision.name}`
+        text: `❌ Your vote "No" has been recorded for: ${decisionState.name}`
       });
       
     } catch (error) {
@@ -473,77 +453,64 @@ const registerVotingHandlers = (app) => {
   });
   
   // Handle Abstain vote
-  app.action(/^vote_abstain_(\d+)$/, async ({ ack, body, client, action }) => {
+  app.action(/^vote_abstain_/, async ({ ack, body, client, action }) => {
     try {
       await ack();
       
-      const decisionId = parseInt(action.value);
       const userId = body.user.id;
+      const channelId = body.channel.id;
+      const messageTs = body.message.ts;
+      
+      // Get decision state from Slack
+      const decisionState = await slackState.getDecisionState(client, channelId, messageTs);
       
       // Check if user is eligible to vote
-      const isEligible = db.isUserEligibleToVote(decisionId, userId);
+      const isEligible = slackState.isUserEligibleToVote(decisionState, userId);
       
       if (!isEligible) {
         logger.warn('Ineligible user attempted to vote', {
-          decisionId,
           userId,
-          voteType: 'abstain'
+          voteType: 'abstain',
+          messageTs
         });
         
         await client.chat.postEphemeral({
-          channel: body.channel.id,
+          channel: channelId,
           user: userId,
           text: '⚠️ You are not eligible to vote on this decision. Only required voters can cast votes.'
         });
         return;
       }
       
-      // Get decision to check if it's still active
-      const decision = db.getDecision(decisionId);
-      
-      if (!decision) {
-        logger.error('Decision not found', { decisionId });
-        await client.chat.postEphemeral({
-          channel: body.channel.id,
-          user: userId,
-          text: '❌ Decision not found.'
-        });
-        return;
-      }
-      
-      if (decision.status !== 'active') {
+      if (decisionState.status !== 'active') {
         logger.warn('Vote attempted on non-active decision', {
-          decisionId,
           userId,
-          status: decision.status
+          status: decisionState.status,
+          messageTs
         });
         
         await client.chat.postEphemeral({
-          channel: body.channel.id,
+          channel: channelId,
           user: userId,
-          text: `⚠️ This decision is no longer active (status: ${decision.status}). Votes cannot be changed.`
+          text: `⚠️ This decision is no longer active (status: ${decisionState.status}). Votes cannot be changed.`
         });
         return;
       }
       
       logger.info('Vote cast', {
-        decisionId,
         userId,
-        voteType: 'abstain'
+        voteType: 'abstain',
+        messageTs
       });
       
-      // Save vote to database
-      db.upsertVote({
-        decision_id: decisionId,
-        user_id: userId,
-        vote_type: 'abstain'
-      });
+      // Record vote in Slack thread
+      await slackState.recordVote(client, channelId, messageTs, userId, 'abstain');
       
       // Send confirmation
       await client.chat.postEphemeral({
-        channel: body.channel.id,
+        channel: channelId,
         user: userId,
-        text: `⏸️ Your vote "Abstain" has been recorded for: ${decision.name}`
+        text: `⏸️ Your vote "Abstain" has been recorded for: ${decisionState.name}`
       });
       
     } catch (error) {
