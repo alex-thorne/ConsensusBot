@@ -4,10 +4,7 @@
  * Ensures all type definitions are consistent and complete
  */
 
-import {
-  assertEquals,
-  assertExists,
-} from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { assertEquals, assertExists } from "@std/assert";
 import {
   DecisionItem,
   DecisionRecord,

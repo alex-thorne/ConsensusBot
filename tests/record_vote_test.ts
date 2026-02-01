@@ -4,10 +4,7 @@
  * Tests the vote recording functionality with proper type safety
  */
 
-import {
-  assertEquals,
-  assertExists,
-} from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { assertEquals, assertExists } from "@std/assert";
 import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
 
 Deno.test("record_vote - DecisionRecord includes all required fields", () => {
