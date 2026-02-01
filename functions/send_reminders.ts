@@ -3,25 +3,8 @@ import DecisionDatastore from "../datastores/decisions.ts";
 import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
-
-// Type definitions for Slack API responses
-interface VoteItem {
-  user_id: string;
-  [key: string]: unknown;
-}
-
-interface VoterItem {
-  user_id: string;
-  [key: string]: unknown;
-}
-
-interface DecisionItem {
-  id: string;
-  name: string;
-  deadline: string;
-  channel_id: string;
-  [key: string]: unknown;
-}
+import { SlackClient } from "../types/slack_types.ts";
+import { DecisionRecord, VoteRecord, VoterRecord } from "../types/decision_types.ts";
 
 /**
  * Function to send reminders to voters who haven't voted
@@ -94,20 +77,22 @@ export default SlackFunction(
       });
       
       const votedUserIds = new Set(
-        votesResponse.ok ? votesResponse.items.map((v) => (v as VoteItem).user_id) : []
+        votesResponse.ok ? votesResponse.items.map((v) => (v as VoteRecord).user_id) : []
       );
       
       // Find missing voters
       const missingVoters = votersResponse.items.filter(
-        (voter) => !votedUserIds.has((voter as VoterItem).user_id)
+        (voter) => !votedUserIds.has((voter as VoterRecord).user_id)
       );
       
       // Send reminders to missing voters
       for (const voter of missingVoters) {
+        const voterRecord = voter as VoterRecord;
+        const decisionRecord = decision as DecisionRecord;
         const reminderSent = await sendReminderDM(
           client,
-          voter.user_id,
-          decision,
+          voterRecord.user_id,
+          decisionRecord,
         );
         
         if (reminderSent) {
@@ -126,10 +111,9 @@ export default SlackFunction(
  * Send a reminder DM to a voter
  */
 async function sendReminderDM(
-  // deno-lint-ignore no-explicit-any
-  client: any,
+  client: SlackClient,
   userId: string,
-  decision: DecisionItem,
+  decision: DecisionRecord,
 ): Promise<boolean> {
   try {
     const result = await client.chat.postMessage({

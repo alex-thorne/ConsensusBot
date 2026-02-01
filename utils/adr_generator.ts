@@ -5,23 +5,11 @@
  */
 
 import { DecisionResult } from "./decision_logic.ts";
+import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
 
-export interface Decision {
-  id: string;
-  name: string;
-  proposal: string;
-  success_criteria: string;
-  deadline: string;
-  creator_id: string;
-  created_at: string;
-  status: string;
-}
-
-export interface VoteRecord {
-  user_id: string;
-  vote_type: 'yes' | 'no' | 'abstain';
-  voted_at: string;
-}
+// Re-export for backward compatibility
+export type Decision = DecisionRecord;
+export type { VoteRecord };
 
 /**
  * Generate ADR markdown from a finalized decision

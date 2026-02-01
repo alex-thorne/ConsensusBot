@@ -2,19 +2,7 @@ import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
 import DecisionDatastore from "../datastores/decisions.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { getDefaultDeadline } from "../utils/date_utils.ts";
-
-// Type definitions for Block Kit elements
-interface BlockElement {
-  type: string;
-  value?: string;
-  [key: string]: unknown;
-}
-
-interface Block {
-  type: string;
-  elements?: BlockElement[];
-  [key: string]: unknown;
-}
+import { SlackBlock, SlackElement } from "../types/slack_types.ts";
 
 /**
  * Function to create a new decision and post voting message
@@ -205,7 +193,7 @@ export default SlackFunction(
       ts: message_ts,
       text: `New Decision: ${inputs.decision_name}`,
       blocks: message.message?.blocks?.map((block) => {
-        const typedBlock = block as Block;
+        const typedBlock = block as SlackBlock;
         if (typedBlock.type === "actions") {
           return {
             ...typedBlock,

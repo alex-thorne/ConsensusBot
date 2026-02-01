@@ -5,11 +5,10 @@
  * success criteria (Simple Majority, Supermajority, Unanimity).
  */
 
-export interface Vote {
-  vote_type: 'yes' | 'no' | 'abstain';
-  user_id: string;
-  decision_id: string;
-}
+import { VoteRecord } from "../types/decision_types.ts";
+
+// Re-export for backward compatibility
+export type Vote = VoteRecord;
 
 export interface VoteCounts {
   yes: number;

@@ -5,18 +5,8 @@ import VoterDatastore from "../datastores/voters.ts";
 import { calculateDecisionOutcome } from "../utils/decision_logic.ts";
 import { generateADRMarkdown, formatADRForSlack } from "../utils/adr_generator.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
-
-// Type definitions for Decision data
-interface DecisionRecord {
-  id: string;
-  name: string;
-  status: string;
-  success_criteria: string;
-  deadline: string;
-  channel_id: string;
-  creator_id: string;
-  [key: string]: unknown;
-}
+import { SlackClient } from "../types/slack_types.ts";
+import { DecisionRecord } from "../types/decision_types.ts";
 
 /**
  * Function to record a vote on a decision
@@ -77,7 +67,7 @@ export default SlackFunction(
       return { error: "Decision not found" };
     }
     
-    const decision = getDecision.item;
+    const decision = getDecision.item as DecisionRecord;
     
     // Check if decision is still active
     if (decision.status !== "active") {
@@ -146,8 +136,7 @@ export default SlackFunction(
  * Check if decision should be finalized
  */
 async function checkIfShouldFinalize(
-  // deno-lint-ignore no-explicit-any
-  client: any,
+  client: SlackClient,
   decision_id: string,
   deadline: string
 ): Promise<boolean> {
@@ -182,8 +171,7 @@ async function checkIfShouldFinalize(
  * Finalize a decision and generate ADR
  */
 async function finalizeDecision(
-  // deno-lint-ignore no-explicit-any
-  client: any,
+  client: SlackClient,
   decision: DecisionRecord,
   channel_id: string,
   message_ts: string
@@ -299,7 +287,7 @@ async function finalizeDecision(
 
   // Generate and post ADR
   const adrMarkdown = generateADRMarkdown(
-    decision as any, // TODO: Fix type mismatch with Decision interface
+    decision,
     votes,
     outcome,
     userMap
