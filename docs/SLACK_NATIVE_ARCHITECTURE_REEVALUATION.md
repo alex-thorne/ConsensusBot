@@ -139,12 +139,12 @@ Based on PR #10 analysis and current infrastructure:
 | -------------------------- | ----------------------------------------- | ----------------------------------- | ------- |
 | **Authentication**         | Manual Service Principal + PAT management | Automatic OAuth token rotation      | ROSI ✅ |
 | **Secret Storage**         | Azure Key Vault (separate service)        | Slack-managed environment variables | ROSI ✅ |
-| **Network Security**       | NSGs, CORS, IP allowlists                 | Platform-level isolation            | Tie ⚖️   |
+| **Network Security**       | NSGs, CORS, IP allowlists                 | Platform-level isolation            | Tie ⚖️  |
 | **Data Encryption**        | TLS 1.2, Storage encryption               | TLS 1.3, Native encryption          | ROSI ✅ |
 | **Compliance**             | SOC 2, ISO 27001 (DIY audit)              | SOC 2, ISO 27001 (Slack-certified)  | ROSI ✅ |
 | **Vulnerability Patching** | Manual - monthly updates                  | Automatic - platform managed        | ROSI ✅ |
-| **Access Control**         | RBAC + IAM + Key Vault policies           | Workspace-level permissions         | Tie ⚖️   |
-| **Audit Logging**          | Application Insights queries              | Slack Audit Logs API                | Tie ⚖️   |
+| **Access Control**         | RBAC + IAM + Key Vault policies           | Workspace-level permissions         | Tie ⚖️  |
+| **Audit Logging**          | Application Insights queries              | Slack Audit Logs API                | Tie ⚖️  |
 
 **Security Score:**
 
@@ -632,27 +632,27 @@ Monthly Cost Breakdown:
   App Service Plan (B1):
     Compute: $55.00
     Description: "1 vCore, 1.75 GB RAM, 10 GB storage"
-  
+
   Azure Functions (Consumption):
     Executions: $5.00 (1M executions @ $0.20/M)
     Duration: $10.00 (100,000 GB-s @ $0.000016/GB-s)
     Total: $15.00
-  
+
   Azure Key Vault:
     Operations: $3.00 (10,000 operations @ $0.03/10K)
     Secrets: $1.00 (20 secrets @ $0.05/secret)
     Total: $4.00
-  
+
   Storage Account:
     Storage: $2.00 (50 GB @ $0.04/GB)
     Transactions: $1.00 (1M transactions @ $0.001/10K)
     Total: $3.00
-  
+
   Application Insights:
     Ingestion: $146.00 (5 GB @ $2.92/GB)
     Retention: $20.00 (90 days extended)
     Total: $166.00
-  
+
   Terraform State Storage:
     Storage: $1.00 (1 GB @ $0.04/GB)
     Transactions: $0.50 (50K operations)
@@ -672,13 +672,13 @@ Monthly Cost Breakdown (Low Volume Scenario):
     Reminders Sent: 100 @ $0.02 = $2.00
     Finalizations: 50 @ $0.05 = $2.50
     Total: $13.50
-  
+
   Datastore Operations:
     Reads: 1,000 @ $0.005/1K = $5.00
     Writes: 500 @ $0.01/1K = $5.00
     Storage: 100 MB @ $0.00/GB (included)
     Total: $10.00
-  
+
   Scheduled Triggers:
     Nudger Cron: 22 executions @ $0.50 = $11.00
     Total: $11.00
