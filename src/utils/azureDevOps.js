@@ -12,6 +12,7 @@
  */
 
 const logger = require('./logger');
+const axios = require('axios');
 
 /**
  * Azure DevOps REST API client configuration
@@ -52,6 +53,39 @@ class AzureDevOpsClient {
   }
   
   /**
+   * Get the latest commit SHA for a branch
+   * @param {string} branch - Branch name
+   * @returns {Promise<string>} Commit SHA
+   */
+  async getLatestCommitSha(branch = 'main') {
+    try {
+      const url = `${this.baseUrl}/git/repositories/${this.repository}/refs?filter=heads/${branch}&api-version=7.0`;
+      
+      logger.debug('Getting latest commit SHA', { repository: this.repository, branch });
+      
+      const response = await axios.get(url, {
+        headers: this.getAuthHeaders(),
+        timeout: 10000
+      });
+      
+      if (response.data && response.data.value && response.data.value.length > 0) {
+        const commitSha = response.data.value[0].objectId;
+        logger.debug('Latest commit SHA retrieved', { commitSha });
+        return commitSha;
+      }
+      
+      throw new Error(`Branch ${branch} not found in repository ${this.repository}`);
+    } catch (error) {
+      logger.error('Error getting latest commit SHA', {
+        error: error.message,
+        branch,
+        repository: this.repository
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Push a file to the repository
    * @param {string} filePath - Path where file should be created in repo
    * @param {string} content - File content
@@ -60,67 +94,112 @@ class AzureDevOpsClient {
    * @returns {Promise<object>} Push result
    */
   async pushFile(filePath, content, commitMessage, branch = 'main') {
-    try {
-      logger.info('Pushing file to Azure DevOps', {
-        repository: this.repository,
-        filePath,
-        branch
-      });
-      
-      // This is a placeholder for the actual API call
-      // Real implementation would use Azure DevOps REST API
-      // Reference: https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pushes/create
-      
-      const pushPayload = {
-        refUpdates: [
-          {
-            name: `refs/heads/${branch}`,
-            oldObjectId: '0000000000000000000000000000000000000000' // Would need to get actual commit SHA
-          }
-        ],
-        commits: [
-          {
-            comment: commitMessage,
-            changes: [
-              {
-                changeType: 'add',
-                item: {
-                  path: filePath
-                },
-                newContent: {
-                  content: content,
-                  contentType: 'rawtext'
+    const maxRetries = 3;
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        logger.info('Pushing file to Azure DevOps', {
+          repository: this.repository,
+          filePath,
+          branch,
+          attempt
+        });
+        
+        // Get the latest commit SHA for the branch
+        const oldObjectId = await this.getLatestCommitSha(branch);
+        
+        // Prepare the push payload
+        // Reference: https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pushes/create
+        const pushPayload = {
+          refUpdates: [
+            {
+              name: `refs/heads/${branch}`,
+              oldObjectId: oldObjectId
+            }
+          ],
+          commits: [
+            {
+              comment: commitMessage,
+              changes: [
+                {
+                  changeType: 'add',
+                  item: {
+                    path: filePath
+                  },
+                  newContent: {
+                    content: content,
+                    contentType: 'rawtext'
+                  }
                 }
-              }
-            ]
-          }
-        ]
-      };
-      
-      // Placeholder: In production, this would make the actual HTTP request
-      logger.info('Push payload prepared', {
-        changeCount: pushPayload.commits[0].changes.length,
-        commitMessage
-      });
-      
-      // Simulated success response
-      return {
-        success: true,
-        commitId: 'simulated-commit-id',
-        repository: this.repository,
-        branch,
-        filePath
-      };
-      
-    } catch (error) {
-      logger.error('Error pushing file to Azure DevOps', {
-        error: error.message,
-        stack: error.stack,
-        filePath,
-        repository: this.repository
-      });
-      throw error;
+              ]
+            }
+          ]
+        };
+        
+        // Make the API request
+        const url = `${this.baseUrl}/git/repositories/${this.repository}/pushes?api-version=7.0`;
+        
+        logger.debug('Sending push request to Azure DevOps', {
+          url,
+          changeCount: pushPayload.commits[0].changes.length
+        });
+        
+        const response = await axios.post(url, pushPayload, {
+          headers: this.getAuthHeaders(),
+          timeout: 30000
+        });
+        
+        if (response.status === 201 && response.data) {
+          const commitId = response.data.commits && response.data.commits.length > 0
+            ? response.data.commits[0].commitId
+            : response.data.pushId;
+            
+          logger.info('File pushed successfully', {
+            repository: this.repository,
+            filePath,
+            commitId
+          });
+          
+          return {
+            success: true,
+            commitId,
+            repository: this.repository,
+            branch,
+            filePath,
+            pushId: response.data.pushId
+          };
+        }
+        
+        throw new Error(`Unexpected response status: ${response.status}`);
+        
+      } catch (error) {
+        lastError = error;
+        
+        logger.error('Error pushing file to Azure DevOps', {
+          error: error.message,
+          attempt,
+          maxRetries,
+          filePath,
+          repository: this.repository,
+          responseData: error.response?.data
+        });
+        
+        // Don't retry on authentication or validation errors
+        if (error.response?.status === 401 || error.response?.status === 403 || error.response?.status === 400) {
+          throw error;
+        }
+        
+        // Retry on network errors or 5xx errors
+        if (attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          logger.info('Retrying push after delay', { delay, attempt: attempt + 1 });
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
+    
+    throw lastError;
   }
   
   /**
