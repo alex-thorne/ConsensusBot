@@ -221,6 +221,36 @@ List all environment variables:
 slack env list
 ```
 
+### Code Quality & CI
+
+The project uses GitHub Actions for continuous integration with Deno-based checks:
+
+**Run checks locally:**
+
+```bash
+# Lint code
+deno lint
+
+# Check formatting
+deno fmt --check
+
+# Auto-format code
+deno fmt
+
+# Type check
+deno check manifest.ts
+deno check functions/*.ts
+deno check workflows/*.ts
+deno check utils/*.ts
+```
+
+**CI Workflows:**
+- **deno-lint.yml**: Linting and formatting validation
+- **deno-check.yml**: TypeScript type checking
+- **slack-validate.yml**: Slack manifest validation
+
+See [.github/workflows/README.md](.github/workflows/README.md) for details.
+
 ## Project Structure
 
 ```
