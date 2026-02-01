@@ -368,6 +368,94 @@ terraform init
 terraform plan
 ```
 
+## Azure Integrations
+
+ConsensusBot integrates with Azure services for enhanced functionality:
+
+### Azure Timer Function (Nudger)
+
+The Nudger is an automated reminder system that runs on a schedule (Monday-Friday at 9:00 AM UTC) to send DM reminders to voters who haven't cast their votes.
+
+**Key Features:**
+- Scheduled execution via Azure Timer Trigger (cron: `0 0 9 * * 1-5`)
+- Queries database for active decisions with missing voters
+- Sends personalized Slack DMs with decision details and voting links
+- Comprehensive logging and error handling
+
+**Deployment:**
+
+1. **Configure Azure Function App:**
+```bash
+# Create Function App
+az functionapp create \
+  --name consensusbot-nudger \
+  --resource-group consensus-bot-rg \
+  --consumption-plan-location eastus \
+  --runtime node \
+  --runtime-version 18 \
+  --functions-version 4
+```
+
+2. **Set Environment Variables:**
+```bash
+az functionapp config appsettings set \
+  --name consensusbot-nudger \
+  --resource-group consensus-bot-rg \
+  --settings \
+    SLACK_BOT_TOKEN=xoxb-your-token \
+    SLACK_SIGNING_SECRET=your-secret \
+    DATABASE_PATH=/home/site/wwwroot/data/consensus.db
+```
+
+3. **Deploy Function:**
+```bash
+cd azure-functions
+func azure functionapp publish consensusbot-nudger
+```
+
+See [Reminder Deployment Guide](docs/REMINDER_DEPLOYMENT.md) for complete instructions.
+
+### Azure DevOps Integration
+
+ConsensusBot can automatically generate and push Architecture Decision Records (ADRs) to Azure DevOps repositories.
+
+**Key Features:**
+- Generate ADR markdown files from finalized decisions
+- Push ADRs to `KB.ProcessDocs` repository (or configured repo)
+- Include vote statistics, outcomes, and decision metadata
+- Support for all consensus criteria (Simple Majority, Supermajority, Unanimity)
+
+**Configuration:**
+
+Set the following environment variables:
+```bash
+AZURE_DEVOPS_ORG=your-organization
+AZURE_DEVOPS_PROJECT=your-project
+AZURE_DEVOPS_REPO=KB.ProcessDocs
+AZURE_DEVOPS_PAT=your-personal-access-token
+```
+
+**Usage Example:**
+```javascript
+const { createAzureDevOpsClient, pushADRToRepository } = require('./src/utils/azureDevOps');
+
+// Create client
+const adoClient = createAzureDevOpsClient();
+
+// Push ADR for a finalized decision
+const result = await pushADRToRepository(decision, votes, outcome, adoClient);
+console.log(`ADR pushed: ${result.filePath}`);
+```
+
+**ADR Format:**
+Generated ADRs follow the standard template with:
+- Decision status (Accepted/Rejected)
+- Context and proposal details
+- Voting results and statistics
+- Consequences analysis
+- Implementation notes
+- References to Slack messages and database records
+
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
@@ -381,6 +469,10 @@ Additional documentation can be found in the `docs/` directory:
 - [Docker Deployment](docs/DOCKER.md) - Running with Docker
 - [Voting Backend](docs/VOTING_BACKEND.md) - Voting validation and decision outcome logic
 - [Reminder System Deployment](docs/REMINDER_DEPLOYMENT.md) - Automated voter reminder system
+- [Azure DevOps Integration](docs/AZURE_DEVOPS.md) - ADR generation and repository integration
+
+### Azure Functions
+- [Nudger Timer Function](azure-functions/nudger/README.md) - Scheduled reminder function
 
 ### Architecture
 - [Architecture Decision Records (ADRs)](docs/adr/) - Key architectural decisions
@@ -437,10 +529,15 @@ For questions or issues, please:
 - [x] Comprehensive documentation for voting backend
 - [x] Full unit test coverage for decision logic
 
-### Stage 5: Advanced Features (Planned)
+### Stage 5: Azure Integration & Advanced Features ✅ (In Progress)
+- [x] Azure Timer Function for automated reminders (Mon-Fri schedule)
+- [x] Azure DevOps integration foundation
+- [x] ADR (Architecture Decision Record) generation from decisions
+- [x] API client for pushing ADRs to Azure DevOps repositories
+- [x] Comprehensive test coverage for Azure integrations
+- [ ] Deploy reminder system to Azure Functions
 - [ ] Real-time vote counting and progress updates in Slack messages
 - [ ] Automatic decision status updates based on outcomes
-- [ ] Deploy reminder system to Azure Timer Function
 - [ ] Decision analytics dashboard and reporting
 - [ ] Deadline enforcement and automatic decision closure
 - [ ] Integration with project management tools

@@ -1,0 +1,15 @@
+# Azure Functions Deployment Ignore File
+# Files and directories that should not be deployed
+
+.git*
+.vscode/
+.github/
+local.settings.json
+test/
+*.test.js
+*.md
+.env
+.env.*
+node_modules/
+.DS_Store
+Thumbs.db
