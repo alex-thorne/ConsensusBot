@@ -509,6 +509,9 @@ Additional documentation can be found in the `docs/` directory:
 ### Architecture
 - [Architecture Decision Records (ADRs)](docs/adr/) - Key architectural decisions
 - [Stage 1 Summary](docs/STAGE1_SUMMARY.md) - Initial implementation overview
+- **[Architecture Re-evaluation: Slack Native vs Azure](AZURE_VS_SLACK_QUICK_REFERENCE.md)** - Quick reference comparing architectures
+- [Detailed Slack Native Analysis](docs/SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md) - Comprehensive evaluation with new constraints
+- [Architecture Decision: Migrate to Slack Native](ARCHITECTURE_DECISION_SLACK_NATIVE.md) - Formal ADR for migration recommendation
 
 ## License
 
