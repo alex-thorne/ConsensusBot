@@ -507,6 +507,7 @@ Additional documentation can be found in the `docs/` directory:
 - [Nudger Timer Function](azure-functions/nudger/README.md) - Scheduled reminder function
 
 ### Architecture
+- [Architecture Review: Azure vs Slack](docs/ARCHITECTURE_REVIEW_AZURE_VS_SLACK.md) - Infrastructure evaluation and recommendations
 - [Architecture Decision Records (ADRs)](docs/adr/) - Key architectural decisions
 - [Stage 1 Summary](docs/STAGE1_SUMMARY.md) - Initial implementation overview
 

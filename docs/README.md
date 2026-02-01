@@ -6,11 +6,18 @@ This directory contains comprehensive documentation for the ConsensusBot project
 
 ```
 docs/
-├── adr/                  # Architecture Decision Records
-├── templates/            # Documentation templates
-├── DOCKER.md            # Docker deployment guide
-├── LOCAL_SETUP.md       # Local development setup guide
-└── README.md            # This file
+├── adr/                                    # Architecture Decision Records
+├── templates/                              # Documentation templates
+├── ARCHITECTURE_REVIEW_AZURE_VS_SLACK.md  # Azure vs Slack infrastructure review
+├── AZURE_DEVOPS.md                        # Azure DevOps integration guide
+├── DEPLOYMENT.md                          # Production deployment guide
+├── DOCKER.md                              # Docker deployment guide
+├── FINALIZATION.md                        # Decision finalization workflow
+├── LOCAL_SETUP.md                         # Local development setup guide
+├── REMINDER_DEPLOYMENT.md                 # Reminder system deployment
+├── TROUBLESHOOTING.md                     # Troubleshooting guide
+├── VOTING_BACKEND.md                      # Voting logic documentation
+└── README.md                              # This file
 ```
 
 ## Architecture Decision Records (ADRs)
@@ -73,12 +80,28 @@ const app = new App({
 });
 ```
 
+## Key Documentation
+
+### Architecture & Design
+- [Architecture Review: Azure vs Slack](ARCHITECTURE_REVIEW_AZURE_VS_SLACK.md) - Comprehensive infrastructure evaluation
+- [ADR-0001: Use Slack Bolt Framework](adr/0001-use-slack-bolt-framework.md) - Framework selection decision
+
+### Deployment & Operations
+- [Production Deployment Guide](DEPLOYMENT.md) - Step-by-step production deployment
+- [Docker Deployment](DOCKER.md) - Containerized deployment guide
+- [Reminder System Deployment](REMINDER_DEPLOYMENT.md) - Azure Functions nudger setup
+- [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and solutions
+
+### Development
+- [Local Setup](LOCAL_SETUP.md) - Development environment setup
+- [Azure DevOps Integration](AZURE_DEVOPS.md) - ADR generation and archival
+- [Voting Backend](VOTING_BACKEND.md) - Decision logic and vote counting
+- [Finalization Workflow](FINALIZATION.md) - Decision finalization process
+
 ## Additional Resources
 
 - [README.md](../README.md) - Project overview and setup
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
-- [LOCAL_SETUP.md](LOCAL_SETUP.md) - Detailed local setup instructions
-- [DOCKER.md](DOCKER.md) - Docker deployment guide
 - [Slack Bolt Documentation](https://slack.dev/bolt-js/)
 
 ## Questions?
