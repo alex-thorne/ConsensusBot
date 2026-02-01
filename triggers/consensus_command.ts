@@ -4,7 +4,9 @@ import CreateDecisionWorkflow from "../workflows/create_decision.ts";
 /**
  * Trigger for /consensus slash command
  */
-const consensusCommandTrigger: Trigger<typeof CreateDecisionWorkflow.definition> = {
+const consensusCommandTrigger: Trigger<
+  typeof CreateDecisionWorkflow.definition
+> = {
   type: "shortcut",
   name: "Create Consensus Decision",
   description: "Start a new consensus decision",

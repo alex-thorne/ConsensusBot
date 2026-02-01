@@ -1,22 +1,30 @@
 /**
  * Tests for create_decision function
- * 
+ *
  * Tests the core functionality of creating a decision with proper type safety
  */
 
-import { assertEquals, assertExists } from "https://deno.land/std@0.208.0/assert/mod.ts";
-import { SlackClient, SlackBlock } from "../types/slack_types.ts";
+import {
+  assertEquals,
+  assertExists,
+} from "https://deno.land/std@0.208.0/assert/mod.ts";
+import { SlackBlock, SlackClient } from "../types/slack_types.ts";
 
 // Mock Slack Client
 class MockSlackClient implements SlackClient {
   apps = {
     datastore: {
+      // deno-lint-ignore require-await
       get: async (_params: { datastore: string; id: string }) => {
         return { ok: true, item: {} };
       },
-      put: async (_params: { datastore: string; item: Record<string, unknown> }) => {
+      // deno-lint-ignore require-await
+      put: async (
+        _params: { datastore: string; item: Record<string, unknown> },
+      ) => {
         return { ok: true };
       },
+      // deno-lint-ignore require-await
       query: async (_params: {
         datastore: string;
         expression?: string;
@@ -29,6 +37,7 @@ class MockSlackClient implements SlackClient {
   };
 
   chat = {
+    // deno-lint-ignore require-await
     postMessage: async (params: {
       channel: string;
       text: string;
@@ -43,6 +52,7 @@ class MockSlackClient implements SlackClient {
         },
       };
     },
+    // deno-lint-ignore require-await
     postEphemeral: async (_params: {
       channel: string;
       user: string;
@@ -51,6 +61,7 @@ class MockSlackClient implements SlackClient {
     }) => {
       return { ok: true };
     },
+    // deno-lint-ignore require-await
     update: async (_params: {
       channel: string;
       ts: string;
@@ -62,6 +73,7 @@ class MockSlackClient implements SlackClient {
   };
 
   users = {
+    // deno-lint-ignore require-await
     info: async (_params: { user: string }) => {
       return {
         ok: true,
@@ -74,9 +86,11 @@ class MockSlackClient implements SlackClient {
   };
 
   pins = {
+    // deno-lint-ignore require-await
     add: async (_params: { channel: string; timestamp: string }) => {
       return { ok: true };
     },
+    // deno-lint-ignore require-await
     remove: async (_params: { channel: string; timestamp: string }) => {
       return { ok: true };
     },
@@ -85,18 +99,18 @@ class MockSlackClient implements SlackClient {
 
 Deno.test("create_decision - SlackClient type compatibility", () => {
   const mockClient = new MockSlackClient();
-  
+
   // Verify that MockSlackClient implements SlackClient correctly
   assertExists(mockClient.apps);
   assertExists(mockClient.chat);
   assertExists(mockClient.users);
   assertExists(mockClient.pins);
-  
+
   // Verify datastore methods exist
   assertExists(mockClient.apps.datastore.get);
   assertExists(mockClient.apps.datastore.put);
   assertExists(mockClient.apps.datastore.query);
-  
+
   // Verify chat methods exist
   assertExists(mockClient.chat.postMessage);
   assertExists(mockClient.chat.postEphemeral);
@@ -111,7 +125,7 @@ Deno.test("create_decision - SlackBlock type for Block Kit objects", () => {
       text: "Test message",
     },
   };
-  
+
   assertEquals(block.type, "section");
   assertExists(block.text);
 });
@@ -132,7 +146,7 @@ Deno.test("create_decision - SlackBlock actions block with elements", () => {
       },
     ],
   };
-  
+
   assertEquals(actionsBlock.type, "actions");
   assertEquals(actionsBlock.block_id, "voting_actions");
   assertExists(actionsBlock.elements);
@@ -158,7 +172,7 @@ Deno.test("create_decision - block mapping preserves type safety", () => {
       ],
     },
   ];
-  
+
   // Simulate the block mapping logic from create_decision.ts
   const mappedBlocks = blocks.map((block) => {
     const typedBlock = block as SlackBlock;
@@ -173,11 +187,11 @@ Deno.test("create_decision - block mapping preserves type safety", () => {
     }
     return typedBlock;
   });
-  
+
   assertEquals(mappedBlocks.length, 2);
   assertEquals(mappedBlocks[0].type, "header");
   assertEquals(mappedBlocks[1].type, "actions");
-  
+
   // Verify the value was updated
   const actionsBlock = mappedBlocks[1];
   if (actionsBlock.elements && actionsBlock.elements.length > 0) {

@@ -1,10 +1,13 @@
 # Migration Guide: Azure to Slack Native (ROSI)
 
-This document provides step-by-step instructions for migrating from the Azure-based ConsensusBot architecture to the new Slack Native (ROSI) architecture.
+This document provides step-by-step instructions for migrating from the
+Azure-based ConsensusBot architecture to the new Slack Native (ROSI)
+architecture.
 
 ## Overview
 
 The migration involves:
+
 1. Deploying the new Slack Native app
 2. Exporting existing decisions (if any)
 3. Decommissioning Azure infrastructure
@@ -95,6 +98,7 @@ In Slack, run:
 ```
 
 Create a test decision and verify:
+
 - Modal opens correctly
 - Decision is posted with voting buttons
 - Votes can be cast
@@ -109,6 +113,7 @@ Run both systems in parallel for 48 hours:
 3. **Monitoring**: Watch for any issues with the new system
 
 During this period:
+
 - Create new decisions only in the new system
 - Monitor logs: `slack activity --tail`
 - Verify reminder emails are sending
@@ -158,6 +163,7 @@ terraform destroy
 ```
 
 This will delete:
+
 - App Service
 - Azure Functions
 - Key Vault
@@ -168,6 +174,7 @@ This will delete:
 #### 4. Clean Up Azure DevOps
 
 If you were using Azure DevOps for ADR storage:
+
 - Keep existing ADRs in the repository
 - Remove the PAT (Personal Access Token) used by the bot
 - Update your ADR workflow documentation to reflect manual process
@@ -197,6 +204,7 @@ mv docs/DOCKER.md docs/archive/
 #### 3. Update Deployment Guides
 
 Create new deployment guide focused on Slack CLI:
+
 - Remove Terraform instructions
 - Remove Docker instructions
 - Add Slack CLI deployment steps
@@ -244,6 +252,7 @@ If you deleted Azure resources but need to rollback:
 ## Cost Comparison
 
 ### Before Migration (Azure)
+
 - App Service: $55/month
 - Azure Functions: $5-15/month
 - Key Vault: $3-5/month
@@ -253,6 +262,7 @@ If you deleted Azure resources but need to rollback:
 - **Maintenance: 8-12 hours/month**
 
 ### After Migration (Slack ROSI)
+
 - Workflow executions: $5-15/month
 - Datastore operations: $5-10/month
 - Scheduled triggers: $10-15/month
@@ -268,6 +278,7 @@ If you deleted Azure resources but need to rollback:
 **Problem**: `/consensus` command not responding
 
 **Solution**:
+
 ```bash
 # Check trigger status
 slack triggers list
@@ -287,6 +298,7 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 **Problem**: Voters not receiving reminder DMs
 
 **Solution**:
+
 ```bash
 # Check scheduled trigger
 slack triggers list
@@ -302,7 +314,8 @@ slack triggers create --trigger-def triggers/reminder_schedule.ts
 
 **Problem**: Lost active decisions during migration
 
-**Solution**: Use the exported `active_decisions.json` to manually recreate decisions
+**Solution**: Use the exported `active_decisions.json` to manually recreate
+decisions
 
 ## Post-Migration Checklist
 
@@ -324,22 +337,24 @@ slack triggers create --trigger-def triggers/reminder_schedule.ts
 ## Support
 
 For migration support:
+
 - Check the [Slack Native README](README.md)
-- Review [Architecture Re-evaluation](docs/SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md)
+- Review
+  [Architecture Re-evaluation](docs/SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md)
 - Open a GitHub issue
 - Contact Slack support for ROSI-specific questions
 
 ## Timeline Summary
 
-| Week | Activities | Estimated Hours |
-|------|-----------|-----------------|
-| 1 | Preparation, deployment, testing | 12 hours |
-| 2 | Parallel run, data migration | 8 hours |
-| 3 | Decommission Azure, update docs | 4 hours |
-| **Total** | | **24 hours** |
+| Week      | Activities                       | Estimated Hours |
+| --------- | -------------------------------- | --------------- |
+| 1         | Preparation, deployment, testing | 12 hours        |
+| 2         | Parallel run, data migration     | 8 hours         |
+| 3         | Decommission Azure, update docs  | 4 hours         |
+| **Total** |                                  | **24 hours**    |
 
 **Payback Period**: 7-8 months based on cost savings
 
 ---
 
-*Last Updated: February 2026*
+_Last Updated: February 2026_

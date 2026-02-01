@@ -1,6 +1,6 @@
 /**
  * Type definitions for Decision records
- * 
+ *
  * Unified type definitions for decision data to ensure consistency
  * across datastores and utility functions.
  */
@@ -37,7 +37,7 @@ export interface VoteRecord {
   id: string;
   decision_id: string;
   user_id: string;
-  vote_type: 'yes' | 'no' | 'abstain';
+  vote_type: "yes" | "no" | "abstain";
   voted_at: string;
 }
 

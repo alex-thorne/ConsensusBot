@@ -1,12 +1,20 @@
 /**
  * Tests for unified type definitions
- * 
+ *
  * Ensures all type definitions are consistent and complete
  */
 
-import { assertEquals, assertExists } from "https://deno.land/std@0.208.0/assert/mod.ts";
-import { DecisionRecord, VoteRecord, VoterRecord, DecisionItem } from "../types/decision_types.ts";
-import { SlackClient, SlackBlock, SlackElement } from "../types/slack_types.ts";
+import {
+  assertEquals,
+  assertExists,
+} from "https://deno.land/std@0.208.0/assert/mod.ts";
+import {
+  DecisionItem,
+  DecisionRecord,
+  VoteRecord,
+  VoterRecord,
+} from "../types/decision_types.ts";
+import { SlackBlock, SlackClient, SlackElement } from "../types/slack_types.ts";
 
 Deno.test("types - DecisionRecord has all required fields", () => {
   const decision: DecisionRecord = {
@@ -54,7 +62,7 @@ Deno.test("types - DecisionItem is compatible with DecisionRecord", () => {
 
   // DecisionItem should be assignable from DecisionRecord
   const item: DecisionItem = decision;
-  
+
   assertEquals(item.id, decision.id);
   assertEquals(item.name, decision.name);
 });
@@ -73,9 +81,13 @@ Deno.test("types - VoteRecord has correct structure", () => {
   assertExists(vote.user_id);
   assertExists(vote.vote_type);
   assertExists(vote.voted_at);
-  
+
   // vote_type should be one of the valid values
-  const validVoteTypes: Array<"yes" | "no" | "abstain"> = ["yes", "no", "abstain"];
+  const validVoteTypes: Array<"yes" | "no" | "abstain"> = [
+    "yes",
+    "no",
+    "abstain",
+  ];
   assertEquals(validVoteTypes.includes(vote.vote_type), true);
 });
 
@@ -93,20 +105,23 @@ Deno.test("types - VoterRecord has correct structure", () => {
   assertExists(voter.user_id);
   assertExists(voter.required);
   assertExists(voter.created_at);
-  
+
   assertEquals(typeof voter.required, "boolean");
 });
 
 Deno.test("types - SlackClient has all required methods", () => {
   // Type check that SlackClient interface is complete
   type ClientType = SlackClient;
-  
+
   // Verify the type has the expected structure
   const mockClient: Partial<ClientType> = {
     apps: {
       datastore: {
+        // deno-lint-ignore require-await
         get: async () => ({ ok: true }),
+        // deno-lint-ignore require-await
         put: async () => ({ ok: true }),
+        // deno-lint-ignore require-await
         query: async () => ({ ok: true, items: [] }),
       },
     },
@@ -167,7 +182,7 @@ Deno.test("types - SlackElement allows flexible element types", () => {
 
 Deno.test("types - DecisionRecord success_criteria values", () => {
   const validCriteria = ["simple_majority", "super_majority", "unanimous"];
-  
+
   for (const criteria of validCriteria) {
     const decision: DecisionRecord = {
       id: "1234567890.123456",
@@ -182,14 +197,14 @@ Deno.test("types - DecisionRecord success_criteria values", () => {
       created_at: "2026-02-01T00:00:00.000Z",
       updated_at: "2026-02-01T00:00:00.000Z",
     };
-    
+
     assertEquals(decision.success_criteria, criteria);
   }
 });
 
 Deno.test("types - DecisionRecord status values", () => {
   const validStatuses = ["active", "approved", "rejected"];
-  
+
   for (const status of validStatuses) {
     const decision: DecisionRecord = {
       id: "1234567890.123456",
@@ -204,7 +219,7 @@ Deno.test("types - DecisionRecord status values", () => {
       created_at: "2026-02-01T00:00:00.000Z",
       updated_at: "2026-02-01T00:00:00.000Z",
     };
-    
+
     assertEquals(decision.status, status);
   }
 });

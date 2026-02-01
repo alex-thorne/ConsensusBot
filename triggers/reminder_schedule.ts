@@ -5,7 +5,9 @@ import SendRemindersWorkflow from "../workflows/send_reminders.ts";
  * Scheduled trigger for sending voter reminders
  * Runs Monday-Friday at 9:00 AM UTC
  */
-const reminderScheduleTrigger: Trigger<typeof SendRemindersWorkflow.definition> = {
+const reminderScheduleTrigger: Trigger<
+  typeof SendRemindersWorkflow.definition
+> = {
   type: "scheduled",
   name: "Send Voter Reminders",
   description: "Send DM reminders to voters who haven't voted",

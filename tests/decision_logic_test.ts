@@ -1,16 +1,16 @@
 /**
  * Tests for decision_logic utility
- * 
+ *
  * Tests decision outcome calculations with the unified VoteRecord type
  */
 
 import { assertEquals } from "https://deno.land/std@0.208.0/assert/mod.ts";
 import {
-  calculateVoteCounts,
+  calculateDecisionOutcome,
   calculateSimpleMajority,
   calculateSupermajority,
   calculateUnanimity,
-  calculateDecisionOutcome,
+  calculateVoteCounts,
 } from "../utils/decision_logic.ts";
 import { VoteRecord } from "../types/decision_types.ts";
 

@@ -1,11 +1,14 @@
 ## Deploying ConsensusBot to Slack
 
-This guide walks through deploying ConsensusBot using Slack's native ROSI infrastructure.
+This guide walks through deploying ConsensusBot using Slack's native ROSI
+infrastructure.
 
 ### Prerequisites
 
-1. **Slack CLI** installed ([installation guide](https://api.slack.com/automation/cli/install))
-2. **Deno** installed (v1.37+) ([installation guide](https://deno.land/manual/getting_started/installation))
+1. **Slack CLI** installed
+   ([installation guide](https://api.slack.com/automation/cli/install))
+2. **Deno** installed (v1.37+)
+   ([installation guide](https://deno.land/manual/getting_started/installation))
 3. Slack workspace with admin permissions
 4. Paid Slack plan (required for Datastores and ROSI features)
 
@@ -25,7 +28,8 @@ From the repository root:
 slack create
 ```
 
-Select your workspace when prompted. This creates a new app instance in your workspace.
+Select your workspace when prompted. This creates a new app instance in your
+workspace.
 
 ### Step 3: Deploy the Application
 
@@ -34,6 +38,7 @@ slack deploy
 ```
 
 This command:
+
 - Compiles TypeScript to JavaScript
 - Deploys functions, workflows, and datastores
 - Configures app permissions
@@ -124,12 +129,14 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 #### Datastore errors
 
 Ensure your workspace has a paid plan. Datastores require:
+
 - Slack Pro plan or higher
 - OR Enterprise Grid
 
 #### Permission errors
 
 Check that your app has the required bot scopes:
+
 - `commands`
 - `chat:write`
 - `chat:write.public`
@@ -169,4 +176,4 @@ For low volume (<50 decisions/month): **$20-40/month**
 
 ---
 
-*Last updated: February 2026*
+_Last updated: February 2026_

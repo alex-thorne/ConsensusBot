@@ -42,6 +42,7 @@ slack run
 ```
 
 This:
+
 - Connects to your workspace via Socket Mode
 - Enables hot-reloading on file changes
 - Shows real-time logs in the terminal
@@ -130,7 +131,7 @@ export default SlackFunction(
         my_output: "result",
       },
     };
-  }
+  },
 );
 ```
 
@@ -203,16 +204,19 @@ slack activity --workflow create_decision_workflow
 ### Common Issues
 
 **Function not found:**
+
 - Check that function is imported in workflow
 - Verify `source_file` path is correct
 - Re-deploy: `slack deploy`
 
 **Datastore error:**
+
 - Ensure paid Slack plan
 - Check datastore name matches definition
 - Verify permissions in manifest
 
 **Trigger not working:**
+
 - List triggers: `slack triggers list`
 - Recreate: `slack triggers create --trigger-def triggers/my_trigger.ts`
 
@@ -262,6 +266,7 @@ Deno.test("my function works", () => {
 ```
 
 Run with:
+
 ```bash
 deno test
 ```
@@ -304,4 +309,4 @@ slack deploy  # Deploy to workspace
 
 ---
 
-*Happy coding! 🚀*
+_Happy coding! 🚀_

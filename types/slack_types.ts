@@ -1,6 +1,6 @@
 /**
  * Type definitions for Slack API client and related types
- * 
+ *
  * These types provide proper typing for the Slack Bolt SDK client
  * and Block Kit elements to replace usage of `any` types.
  */
