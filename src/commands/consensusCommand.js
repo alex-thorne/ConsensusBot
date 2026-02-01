@@ -289,7 +289,7 @@ const registerConsensusCommand = (app) => {
  */
 const registerVotingHandlers = (app) => {
   // Handle Yes vote
-  app.action(/^vote_yes_/, async ({ ack, body, client, action }) => {
+  app.action(/^vote_yes_/, async ({ ack, body, client }) => {
     try {
       await ack();
       
@@ -371,7 +371,7 @@ const registerVotingHandlers = (app) => {
   });
   
   // Handle No vote
-  app.action(/^vote_no_/, async ({ ack, body, client, action }) => {
+  app.action(/^vote_no_/, async ({ ack, body, client }) => {
     try {
       await ack();
       
@@ -453,7 +453,7 @@ const registerVotingHandlers = (app) => {
   });
   
   // Handle Abstain vote
-  app.action(/^vote_abstain_/, async ({ ack, body, client, action }) => {
+  app.action(/^vote_abstain_/, async ({ ack, body, client }) => {
     try {
       await ack();
       
