@@ -97,15 +97,21 @@ const parseDecisionFromMessage = (message) => {
         }
         if (text.includes('*Success Criteria:*')) {
           const criteria = text.split('*Success Criteria:*')[1]?.trim() || '';
-          successCriteria = criteria.toLowerCase().replace(/\s+/g, '_');
+          // Extract the raw criteria value if present in parentheses
+          const match = criteria.match(/\((.*?)\)/);
+          if (match && match[1]) {
+            successCriteria = match[1].toLowerCase().replace(/\s+/g, '_');
+          } else {
+            successCriteria = criteria.toLowerCase().replace(/\s+/g, '_');
+          }
         }
         if (text.includes('*Deadline:*')) {
           deadline = text.split('*Deadline:*')[1]?.trim() || '';
         }
         if (text.includes('*Required Voters:*')) {
           const voterText = text.split('*Required Voters:*')[1]?.trim() || '';
-          // Parse voter mentions like <@U123>, <@U456>
-          voters = (voterText.match(/<@[A-Z0-9]+>/g) || [])
+          // Parse voter mentions like <@U123>, <@U456> - allow both upper and lowercase
+          voters = (voterText.match(/<@[A-Za-z0-9]+>/g) || [])
             .map(mention => mention.replace(/<@|>/g, ''));
         }
       }
@@ -225,7 +231,10 @@ const calculateVoteSummary = (votes) => {
 
 /**
  * Store decision metadata in Slack message
- * Updates the message with metadata containing decision details
+ * 
+ * Note: Slack's chat.update API does not support updating metadata after message creation.
+ * Decision metadata is stored during message creation via the metadata field.
+ * This function exists for potential future use if Slack adds metadata update capability.
  * 
  * @param {object} client - Slack Web API client
  * @param {string} channelId - Channel ID
@@ -234,18 +243,13 @@ const calculateVoteSummary = (votes) => {
  * @returns {Promise<void>}
  */
 const storeDecisionMetadata = async (client, channelId, messageTs, decisionData) => {
-  try {
-    // Note: Slack's chat.update doesn't support updating metadata after message creation
-    // We'll store metadata in the message blocks or use pinned messages as reference
-    logger.info('Decision metadata stored (via message structure)', { 
-      channelId, 
-      messageTs,
-      name: decisionData.name 
-    });
-  } catch (error) {
-    logger.error('Failed to store decision metadata', { error, channelId, messageTs });
-    throw error;
-  }
+  // Note: This is a placeholder as Slack doesn't currently support metadata updates
+  // Metadata must be included during message creation
+  logger.debug('Decision metadata stored during message creation', { 
+    channelId, 
+    messageTs,
+    name: decisionData.name 
+  });
 };
 
 /**

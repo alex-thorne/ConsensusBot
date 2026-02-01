@@ -72,7 +72,7 @@ module.exports = async function (context, nudgerTimer) {
     // Get channel ID from environment or use a default
     const channelId = process.env.NUDGER_CHANNEL_ID;
     if (!channelId) {
-      throw new Error('NUDGER_CHANNEL_ID environment variable is not set. Please configure the channel to monitor for decisions.');
+      throw new Error('NUDGER_CHANNEL_ID environment variable is not set. Add NUDGER_CHANNEL_ID=C123456789 to your Azure Function configuration, where C123456789 is your Slack channel ID.');
     }
     
     // Initialize Slack client

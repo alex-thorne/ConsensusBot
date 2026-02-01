@@ -14,8 +14,11 @@ const createVotingMessage = (decision, voterIds) => {
   // Format voter mentions
   const voterMentions = voterIds.map(id => `<@${id}>`).join(', ');
   
-  // Use timestamp or name for unique identification (we don't have DB IDs anymore)
-  const uniqueId = decision.name.replace(/\s+/g, '_').toLowerCase();
+  // Use message timestamp as unique ID if available, otherwise use sanitized name
+  // Message timestamp is guaranteed unique within a channel
+  const uniqueId = decision.messageTs 
+    ? decision.messageTs.replace('.', '_')
+    : decision.name.replace(/\s+/g, '_').toLowerCase();
   
   return {
     blocks: [
