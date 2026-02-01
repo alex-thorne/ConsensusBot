@@ -9,6 +9,8 @@ const {
   createAzureDevOpsClient
 } = require('../../src/utils/azureDevOps');
 
+const axios = require('axios');
+
 // Mock logger to avoid console output during tests
 jest.mock('../../src/utils/logger', () => ({
   info: jest.fn(),
@@ -17,7 +19,14 @@ jest.mock('../../src/utils/logger', () => ({
   debug: jest.fn()
 }));
 
+// Mock axios
+jest.mock('axios');
+
 describe('Azure DevOps Integration', () => {
+  
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
   
   describe('AzureDevOpsClient', () => {
     
@@ -64,6 +73,26 @@ describe('Azure DevOps Integration', () => {
       };
       
       const client = new AzureDevOpsClient(config);
+      
+      // Mock axios responses
+      axios.get.mockResolvedValueOnce({
+        data: {
+          value: [
+            { objectId: 'abc123' }
+          ]
+        }
+      });
+      
+      axios.post.mockResolvedValueOnce({
+        status: 201,
+        data: {
+          pushId: 1,
+          commits: [
+            { commitId: 'commit123' }
+          ]
+        }
+      });
+      
       const result = await client.pushFile(
         '/docs/test.md',
         'Test content',
@@ -74,6 +103,9 @@ describe('Azure DevOps Integration', () => {
       expect(result.filePath).toBe('/docs/test.md');
       expect(result.repository).toBe('repo');
       expect(result.branch).toBe('main');
+      expect(result.commitId).toBe('commit123');
+      expect(axios.get).toHaveBeenCalled();
+      expect(axios.post).toHaveBeenCalled();
     });
     
     test('should support custom branch in pushFile', async () => {
@@ -85,6 +117,26 @@ describe('Azure DevOps Integration', () => {
       };
       
       const client = new AzureDevOpsClient(config);
+      
+      // Mock axios responses
+      axios.get.mockResolvedValueOnce({
+        data: {
+          value: [
+            { objectId: 'def456' }
+          ]
+        }
+      });
+      
+      axios.post.mockResolvedValueOnce({
+        status: 201,
+        data: {
+          pushId: 2,
+          commits: [
+            { commitId: 'commit456' }
+          ]
+        }
+      });
+      
       const result = await client.pushFile(
         '/docs/test.md',
         'Content',
@@ -93,8 +145,70 @@ describe('Azure DevOps Integration', () => {
       );
       
       expect(result.branch).toBe('develop');
+      expect(result.success).toBe(true);
     });
     
+    test('should retry on network errors', async () => {
+      const config = {
+        organization: 'org',
+        project: 'proj',
+        repository: 'repo',
+        personalAccessToken: 'pat'
+      };
+      
+      const client = new AzureDevOpsClient(config);
+      
+      // Mock first call to getLatestCommitSha succeeds
+      axios.get.mockResolvedValue({
+        data: {
+          value: [{ objectId: 'abc123' }]
+        }
+      });
+      
+      // Mock first two pushes fail with network error, third succeeds
+      axios.post
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({
+          status: 201,
+          data: {
+            pushId: 3,
+            commits: [{ commitId: 'commit789' }]
+          }
+        });
+      
+      const result = await client.pushFile('/test.md', 'content', 'message');
+      
+      expect(result.success).toBe(true);
+      expect(axios.post).toHaveBeenCalledTimes(3);
+    });
+
+    test('should not retry on authentication errors', async () => {
+      const config = {
+        organization: 'org',
+        project: 'proj',
+        repository: 'repo',
+        personalAccessToken: 'invalid-pat'
+      };
+      
+      const client = new AzureDevOpsClient(config);
+      
+      axios.get.mockResolvedValue({
+        data: {
+          value: [{ objectId: 'abc123' }]
+        }
+      });
+      
+      const authError = new Error('Unauthorized');
+      authError.response = { status: 401 };
+      axios.post.mockRejectedValue(authError);
+      
+      await expect(client.pushFile('/test.md', 'content', 'message'))
+        .rejects.toThrow('Unauthorized');
+      
+      expect(axios.post).toHaveBeenCalledTimes(1);
+    });
+
     test('should throw error for getFile (not implemented)', async () => {
       const config = {
         organization: 'org',
