@@ -6,6 +6,7 @@
 
 import { DecisionResult } from "./decision_logic.ts";
 import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
+import { SlackBlock } from "../types/slack_types.ts";
 
 // Re-export for backward compatibility
 export type Decision = DecisionRecord;
@@ -132,25 +133,25 @@ ${
  * @param adrMarkdown - ADR markdown string
  * @returns Formatted Slack message blocks
  */
-export const formatADRForSlack = (adrMarkdown: string) => {
+export const formatADRForSlack = (adrMarkdown: string): SlackBlock[] => {
   return [
     {
-      type: "section",
+      type: "section" as const,
       text: {
-        type: "mrkdwn",
+        type: "mrkdwn" as const,
         text:
           "📝 *Architecture Decision Record Generated*\n\nThe decision has been finalized. Below is the ADR markdown that can be copied to your documentation repository:",
       },
     },
     {
-      type: "section",
+      type: "section" as const,
       text: {
-        type: "mrkdwn",
+        type: "mrkdwn" as const,
         text: "```\n" + adrMarkdown + "\n```",
       },
     },
     {
-      type: "context",
+      type: "context" as const,
       elements: [
         {
           type: "mrkdwn",

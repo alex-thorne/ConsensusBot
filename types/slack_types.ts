@@ -31,7 +31,7 @@ export interface SlackClient {
         datastore: string;
         expression?: string;
         expression_attributes?: Record<string, string>;
-        expression_values?: Record<string, unknown>;
+        expression_values?: Record<string, string | number | boolean>;
       }) => Promise<{
         ok: boolean;
         items: Array<Record<string, unknown>>;
