@@ -242,14 +242,14 @@ ${outcome.reason ? `\n**Outcome Reason**: ${outcome.reason}\n` : ''}
 ### Positive
 
 ${outcome.approved ? 
-  '- The proposed approach has been validated by the team through consensus\n- Clear direction for implementation' :
-  '- Alternative approaches can be explored\n- Concerns raised during voting can inform next steps'}
+    '- The proposed approach has been validated by the team through consensus\n- Clear direction for implementation' :
+    '- Alternative approaches can be explored\n- Concerns raised during voting can inform next steps'}
 
 ### Negative
 
 ${outcome.approved ? 
-  '- Implementation commitments and resource allocation required\n- May require changes to existing systems or processes' :
-  '- The proposed solution was not accepted\n- Additional time needed to find alternative solutions'}
+    '- Implementation commitments and resource allocation required\n- May require changes to existing systems or processes' :
+    '- The proposed solution was not accepted\n- Additional time needed to find alternative solutions'}
 
 ### Neutral
 
@@ -260,14 +260,14 @@ ${outcome.approved ?
 ## Alternatives Considered
 
 ${voteCounts.no > 0 ? 
-  `The ${voteCounts.no} "No" vote${voteCounts.no > 1 ? 's' : ''} indicate${voteCounts.no === 1 ? 's' : ''} alternative approaches or concerns were considered by the team.` :
-  'No significant alternatives were proposed during the voting period.'}
+    `The ${voteCounts.no} "No" vote${voteCounts.no > 1 ? 's' : ''} indicate${voteCounts.no === 1 ? 's' : ''} alternative approaches or concerns were considered by the team.` :
+    'No significant alternatives were proposed during the voting period.'}
 
 ## Implementation Notes
 
 ${outcome.approved ? 
-  'Implementation should proceed according to the proposal outlined in the Context section.' :
-  'This decision was not approved. Review the voting feedback and concerns before proposing alternatives.'}
+    'Implementation should proceed according to the proposal outlined in the Context section.' :
+    'This decision was not approved. Review the voting feedback and concerns before proposing alternatives.'}
 
 ## References
 
