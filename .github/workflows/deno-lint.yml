@@ -1,0 +1,32 @@
+name: Deno Lint
+
+# Run Deno linting on pull requests and pushes to development branch
+on:
+  push:
+    branches: [development]
+  pull_request:
+    branches: [development]
+
+jobs:
+  lint:
+    name: Deno Lint Check
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Deno environment
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      # Run Deno lint
+      - name: Run Deno lint
+        run: deno lint
+
+      # Run Deno format check
+      - name: Check formatting
+        run: deno fmt --check

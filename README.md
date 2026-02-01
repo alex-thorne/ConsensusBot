@@ -1,27 +1,53 @@
-# ConsensusBot
+# ConsensusBot - Slack Native (ROSI)
 
-A Slack App to facilitate team decision-making through collaborative consensus building.
+A Slack App to facilitate team decision-making through collaborative consensus building, built entirely on Slack's Run on Slack Infrastructure (ROSI).
 
 ## Overview
 
-ConsensusBot is a Slack application designed to help teams make decisions collaboratively. It provides tools for creating proposals, gathering feedback, and reaching consensus through structured decision-making processes.
+ConsensusBot is a native Slack application that helps teams make decisions collaboratively using structured voting mechanisms, automated reminders, and automatic generation of Architecture Decision Records (ADRs). The application runs entirely on Slack's infrastructure with zero external dependencies.
+
+## Architecture
+
+### Slack Native (ROSI) Design
+
+ConsensusBot uses a **100% Slack-native architecture** powered by Run on Slack Infrastructure (ROSI):
+
+- **Compute**: Deno runtime hosted on Slack's serverless platform
+- **State Management**: Slack Datastores (DynamoDB-backed, fully managed)
+- **Workflows**: Slack Workflow Builder with custom functions
+- **Triggers**: Slash commands and scheduled triggers
+- **Authentication**: Automatic OAuth token management by Slack
+- **Secrets**: Managed via `slack env` CLI
+
+### Key Benefits
+
+✅ **Zero Infrastructure**: No servers, databases, or external services to manage
+✅ **90% Cost Reduction**: $10-50/month vs $171-266/month for Azure-based architecture
+✅ **85% Less Maintenance**: 1-2 hours/month vs 8-12 hours/month
+✅ **No Secret Rotation**: Slack handles all authentication automatically
+✅ **Auto-Scaling**: Platform handles load automatically
+✅ **Built-in Compliance**: SOC 2 Type II, ISO 27001 certified
 
 ## Features
 
-- 🗳️ **Consensus Building**: Facilitate team decisions with structured voting mechanisms
-- 💬 **Interactive Discussions**: Enable threaded conversations around proposals
-- 📊 **Slack-Based State Management**: All decision state is maintained in Slack threads and metadata (no external database required)
-- 🔔 **Smart Notifications**: Get notified about pending decisions and updates
-- 📝 **ADR Generation**: Automatically create Architecture Decision Records in Azure DevOps upon decision finalization
+- 🗳️ **Consensus Building**: Facilitate team decisions with three voting thresholds:
+  - **Simple Majority** (>50% of votes must be yes)
+  - **Supermajority** (≥66% of required voters must vote yes)
+  - **Unanimity** (All votes must be yes, abstentions allowed)
+- 💬 **Interactive Voting**: Block Kit buttons for Yes/No/Abstain votes
+- 📊 **Slack Datastores**: All decision state maintained in managed datastores
+- 🔔 **Automated Reminders**: Scheduled DMs to voters who haven't voted (Mon-Fri at 9 AM)
+- 📝 **ADR Generation**: Automatic Architecture Decision Records posted to Slack for manual archival
+- ⏰ **Deadline Enforcement**: Automatic decision finalization when all votes are in or deadline passes
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
+Before you begin, ensure you have:
 
-- **Node.js** (v18 or higher)
-- **npm** (v9 or higher)
-- **Docker** and **Docker Compose** (for containerized deployment)
+- **Deno** (v1.37 or higher) - [Install Deno](https://deno.land/manual/getting_started/installation)
+- **Slack CLI** - [Install Slack CLI](https://api.slack.com/automation/cli/install)
 - A **Slack Workspace** where you have admin permissions
+- **Slack paid plan** (required for ROSI features)
 
 ## Getting Started
 
@@ -32,486 +58,354 @@ git clone https://github.com/alex-thorne/ConsensusBot.git
 cd ConsensusBot
 ```
 
-### 2. Install Dependencies
+### 2. Install Slack CLI
+
+Follow the [official installation guide](https://api.slack.com/automation/cli/install) for your platform:
 
 ```bash
-npm install
+# macOS
+brew install slack
+
+# Windows (Scoop)
+scoop install slack
+
+# Linux
+curl -fsSL https://downloads.slack-edge.com/slack-cli/install.sh | bash
 ```
 
-### 3. Configure Slack App
-
-1. Go to [Slack API Dashboard](https://api.slack.com/apps)
-2. Create a new app or use an existing one
-3. Configure the following settings:
-
-   **OAuth & Permissions** - Add required bot token scopes:
-   - `chat:write` - Post messages to channels
-   - `chat:write.public` - Post messages to public channels without joining
-   - `commands` - Add slash commands
-   - `pins:write` - Pin messages to channels
-   - `users:read` - View users in the workspace
-   
-   **Socket Mode**: 
-   - Enable Socket Mode
-   - Create an App-Level Token with `connections:write` scope
-   
-   **Event Subscriptions**: 
-   - Subscribe to `app_home_opened` event
-   - Subscribe to `message.channels` event (optional, for message handling)
-   
-   **Slash Commands**: 
-   - Create `/consensus` command
-   - Request URL can be blank when using Socket Mode
-   - Description: "Create a new consensus decision"
-   - Usage hint: "[help|status]"
-
-   **App Home**:
-   - Enable the Home Tab
-   - Enable the Messages Tab
-
-### 4. Set Up Environment Variables
-
-Copy the example environment file and fill in your Slack credentials:
+### 3. Authenticate with Slack
 
 ```bash
-cp .env.example .env
+slack login
 ```
 
-Edit `.env` and add your Slack tokens:
+This will open a browser window to authorize the CLI with your Slack workspace.
 
-```
-SLACK_BOT_TOKEN=xoxb-your-bot-token
-SLACK_SIGNING_SECRET=your-signing-secret
-SLACK_APP_TOKEN=xapp-your-app-token
-```
-
-**Note:** ConsensusBot uses Slack as its persistence layer. All decision state is maintained in Slack threads and metadata. No external database setup is required.
-
-### 5. Run the Application
-
-#### Option A: Run Locally with Node.js
+### 4. Create the App in Slack
 
 ```bash
-npm start
+slack create consensusbot --template https://github.com/alex-thorne/ConsensusBot
 ```
 
-For development with auto-reload:
+Or if you've already cloned:
 
 ```bash
-npm run dev
+slack create
 ```
 
-#### Option B: Run with Docker
+Select your workspace when prompted.
 
-Build and run the Docker container:
+### 5. Install Dependencies
+
+The Deno runtime will automatically fetch dependencies on first run. No manual installation needed!
+
+### 6. Deploy to Slack
+
+Deploy the app to your workspace:
 
 ```bash
-npm run docker:build
-npm run docker:run
+slack deploy
 ```
 
-Or use Docker Compose directly:
+This will:
+- Deploy all workflows and functions to Slack's infrastructure
+- Create the required Datastores
+- Set up triggers (slash command and scheduled reminders)
+
+### 7. Configure Triggers
+
+After deployment, set up the slash command trigger:
 
 ```bash
-docker-compose up
+slack triggers create --trigger-def triggers/consensus_command.ts
 ```
 
-To stop the container:
+And the scheduled reminder trigger:
 
 ```bash
-npm run docker:down
+slack triggers create --trigger-def triggers/reminder_schedule.ts
 ```
 
-## Architecture
+### 8. Test the App
 
-ConsensusBot uses a **Slack-first architecture** for state management:
+In your Slack workspace, type:
 
-### State Management
-- **Ephemeral State**: All decision state during the voting lifecycle is maintained in Slack
-  - Pinned messages in channels represent active decisions
-  - Thread replies track individual votes with metadata
-  - Slack message metadata stores decision details (voters, criteria, deadline)
-  - No external database required for decision management
+```
+/consensus
+```
 
-### Persistence Layer
-- **Slack Threads**: Vote records and decision progress are stored in threaded messages
-- **Pinned Messages**: Active decisions are pinned for easy discovery
-- **Message Metadata**: Decision configuration and state stored in Slack's metadata API
+You should see a modal to create a new consensus decision!
 
-### Finalized Decisions
-- **Azure DevOps Integration**: Approved decisions are converted to ADRs (Architecture Decision Records)
-- **Repository Storage**: ADRs are committed to Azure DevOps repositories for permanent record-keeping
-- **Path Format**: `KB.ProcessDocs/decisions/YYYY-MM-DD-decision-name.md`
+## Usage
 
-This architecture ensures:
-- ✅ No database setup or maintenance required
-- ✅ State reconstruction from Slack threads
-- ✅ All decision history visible in Slack
-- ✅ Permanent record in Azure DevOps for finalized decisions
+### Creating a Decision
+
+1. Type `/consensus` in any Slack channel
+2. Fill out the modal with:
+   - **Decision Name**: The title of the decision
+   - **Proposal**: Details of what's being decided
+   - **Required Voters**: Select team members whose votes are needed
+   - **Success Criteria**: Choose Simple Majority, Supermajority, or Unanimity
+   - **Deadline**: When votes must be submitted (defaults to 5 business days)
+3. Click "Create Decision"
+
+A voting message will be posted to the channel with Yes/No/Abstain buttons.
+
+### Voting on a Decision
+
+Click one of the voting buttons on the decision message:
+- ✅ **Yes**: Approve the proposal
+- ❌ **No**: Reject the proposal
+- ⚪ **Abstain**: Abstain from voting
+
+You'll receive an ephemeral confirmation message. You can change your vote at any time before the deadline.
+
+### Decision Finalization
+
+Decisions are automatically finalized when:
+- All required voters have cast their votes, OR
+- The deadline is reached
+
+When finalized:
+1. The decision message is updated with the final result
+2. The message is unpinned
+3. An ADR (Architecture Decision Record) is posted in the thread
+4. The ADR markdown can be copied and pasted to your documentation repository
+
+### Voter Reminders
+
+Every weekday at 9:00 AM UTC, the bot automatically:
+1. Checks all active decisions
+2. Identifies voters who haven't voted
+3. Sends them a DM reminder with a link to the decision
 
 ## Development
 
-### Running Tests
+### Local Development
 
-Run the test suite:
-
-```bash
-npm test
-```
-
-Run tests in watch mode:
+Run the app locally for testing:
 
 ```bash
-npm run test:watch
+slack run
 ```
 
-### Linting
+This starts a local development server that connects to your Slack workspace via Socket Mode.
 
-Check code style:
+### View Logs
+
+Monitor app logs in real-time:
 
 ```bash
-npm run lint
+slack activity
 ```
 
-Auto-fix linting issues:
+### Update the App
+
+After making code changes:
 
 ```bash
-npm run lint:fix
+slack deploy
 ```
 
-### Project Structure
+### Managing Environment Variables
+
+Add secrets or environment variables:
+
+```bash
+slack env add KEY_NAME
+```
+
+List all environment variables:
+
+```bash
+slack env list
+```
+
+### Code Quality & CI
+
+The project uses GitHub Actions for continuous integration with Deno-based checks:
+
+**Run checks locally:**
+
+```bash
+# Lint code
+deno lint
+
+# Check formatting
+deno fmt --check
+
+# Auto-format code
+deno fmt
+
+# Type check
+deno check manifest.ts
+deno check functions/*.ts
+deno check workflows/*.ts
+deno check utils/*.ts
+```
+
+**CI Workflows:**
+- **deno-lint.yml**: Linting and formatting validation
+- **deno-check.yml**: TypeScript type checking
+- **slack-validate.yml**: Slack manifest validation
+
+See [.github/workflows/README.md](.github/workflows/README.md) for details.
+
+## Project Structure
 
 ```
 ConsensusBot/
-├── .github/
-│   └── workflows/           # GitHub Actions CI/CD workflows
-├── config/                  # Configuration files
-│   └── default.js          # Default configuration
-├── docs/                    # Documentation
-│   ├── adr/                # Architecture Decision Records
-│   ├── templates/          # Documentation templates
-│   ├── DOCKER.md           # Docker deployment guide
-│   └── LOCAL_SETUP.md      # Local setup guide
-├── src/                     # Application source code
-│   ├── commands/           # Slash command handlers
-│   │   └── consensusCommand.js
-│   ├── modals/             # Modal definitions
-│   │   └── consensusModal.js
-│   ├── utils/              # Utility modules
-│   │   ├── slackState.js   # Slack-based state management
-│   │   ├── reminder.js     # Voter reminder system (Nudger)
-│   │   ├── finalization.js # Decision finalization logic
-│   │   ├── azureDevOps.js  # Azure DevOps ADR integration
-│   │   └── logger.js       # Structured logging
-│   └── index.js            # Main entry point
-├── terraform/               # Infrastructure as Code
-├── test/                    # Test files
-│   ├── commands/           # Command tests
-│   ├── utils/              # Utility tests
-│   └── index.test.js       # Integration tests
-├── .dockerignore            # Docker ignore file
-├── .env.example             # Example environment variables
-├── .eslintrc.json           # ESLint configuration
-├── .gitignore               # Git ignore file
-├── docker-compose.yml       # Docker Compose configuration
-├── Dockerfile               # Docker image definition
-├── jest.config.js           # Jest testing configuration
-└── package.json             # Node.js dependencies and scripts
+├── datastores/              # Slack Datastore definitions
+│   ├── decisions.ts        # Decision metadata
+│   ├── votes.ts            # Vote records
+│   └── voters.ts           # Required voters per decision
+├── functions/               # Custom Slack functions
+│   ├── create_decision.ts  # Create decision and post voting message
+│   ├── record_vote.ts      # Record vote and check finalization
+│   └── send_reminders.ts   # Send DM reminders to voters
+├── workflows/               # Slack workflows
+│   ├── create_decision.ts  # Decision creation workflow
+│   ├── vote.ts             # Voting workflow
+│   └── send_reminders.ts   # Reminder workflow
+├── triggers/                # Workflow triggers
+│   ├── consensus_command.ts    # /consensus slash command
+│   └── reminder_schedule.ts    # Scheduled reminder trigger
+├── utils/                   # Utility functions
+│   ├── decision_logic.ts   # Vote counting and outcome calculation
+│   ├── date_utils.ts       # Date/deadline utilities
+│   └── adr_generator.ts    # ADR markdown generation
+├── manifest.ts              # Slack app manifest
+├── deno.json                # Deno configuration
+├── slack.json               # Slack CLI configuration
+└── README.md                # This file
 ```
 
-## Docker Setup and Testing
+## Slack Datastores
 
-### Building the Docker Image
+### Decisions Datastore
 
-```bash
-docker build -t consensusbot .
-```
-
-### Running the Container
-
-```bash
-docker run -p 3000:3000 --env-file .env consensusbot
-```
-
-### Using Docker Compose
-
-Docker Compose provides an easier way to manage the container:
-
-```bash
-# Start the application
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop the application
-docker-compose down
-```
-
-### Connecting to Slack
-
-1. Ensure your `.env` file has valid Slack credentials
-2. Start the application using any of the methods above
-3. The bot will connect to Slack via Socket Mode
-4. Test by sending a message to the bot or using a slash command
-
-## Using ConsensusBot
-
-### Available Commands
-
-ConsensusBot supports the following slash commands:
-
-#### `/consensus`
-
-The main command to interact with ConsensusBot.
-
-**Usage:**
-
-```
-/consensus              # Start a new consensus decision (shows welcome message with button to open modal)
-/consensus help         # Display help information
-/consensus status       # Check your pending decisions
-```
-
-**What it does:**
-
-- Displays a welcome message explaining ConsensusBot's purpose
-- Provides a button to create a new consensus decision
-- Opens a modal to collect:
-  - **Decision Name**: The title of the decision to be made (required)
-  - **Required Voters**: Team members whose votes are needed (required, multi-select)
-  - **The Proposal**: Details of the target outcome and strategic alignment (required, max 2000 characters)
-  - **Success Criteria**: The threshold for consensus - Unanimity (100%), Supermajority (75%), or Simple Majority (50%+1) (required)
-  - **Deadline**: The date by which votes must be cast (defaults to 5 business days from now)
-
-**Example Workflow:**
-
-1. Type `/consensus` in any Slack channel
-2. Click the "Create New Decision" button in the response
-3. Fill out the modal with your decision details:
-   - **Decision Name**: e.g., "Choose new project framework"
-   - **Required Voters**: Select team members from dropdown (e.g., @alice, @bob, @charlie)
-   - **The Proposal**: "We need to decide on a frontend framework for our new project. React has strong community support and aligns with our team's existing skills."
-   - **Success Criteria**: Choose consensus threshold (e.g., "Simple Majority")
-   - **Deadline**: Select a date or use the default (5 business days)
-4. Click "Create" to submit the decision
-5. A voting message will be posted to the channel with Yes/No/Abstain buttons
-6. The message will be automatically pinned for visibility
-7. Team members can cast their votes by clicking the buttons
-8. Votes are recorded in Slack thread metadata and can be changed until the deadline
-
-### Features Currently Available
-
-✅ **Slash Command Integration**
-- `/consensus` command with interactive welcome message
-- Help and status subcommands
-- Interactive button to open decision modal
-
-✅ **Modal-Based Decision Creation**
-- Structured form for collecting decision inputs
-- Multi-user selection for required voters
-- Proposal field with support for detailed descriptions
-- Configurable success criteria (voting thresholds)
-- Date picker for deadline with smart default (5 business days)
-- Input validation and constraints
-
-✅ **Database Integration**
-- SQLite database for decision persistence
-- Decisions table storing all decision metadata
-- Voters table linking users to decisions
-- Votes table tracking individual votes
-- Automatic schema initialization
-- Transaction support for data consistency
-
-✅ **Voting Mechanisms**
-- Interactive voting message with Block Kit buttons
-- Yes/No/Abstain voting options
-- Vote recording and update capability (users can change their votes)
-- Automatic message pinning for visibility
-- Vote confirmation messages
-
-✅ **Enhanced Logging**
-- Structured JSON logging
-- Log levels (ERROR, WARN, INFO, DEBUG)
-- Contextual information in all log entries
-
-✅ **Error Handling**
-- Global error handler for Slack events
-- Try-catch blocks in all handlers
-- User-friendly error messages
-
-### Database Schema
-
-ConsensusBot uses SQLite to store decision data. The database is automatically created on first run.
-
-**Decisions Table:**
-- `id`: Unique identifier
-- `name`: Decision name/title
-- `proposal`: Detailed proposal description
-- `success_criteria`: Voting threshold (simple_majority, super_majority, unanimous)
-- `deadline`: Voting deadline date
-- `channel_id`: Slack channel where decision was created
-- `creator_id`: User who created the decision
-- `message_ts`: Timestamp of the voting message (for updates)
-- `status`: Current status (active, approved, rejected, expired)
+Stores decision metadata:
+- `id`: Decision ID (message timestamp)
+- `name`: Decision title
+- `proposal`: Proposal description
+- `success_criteria`: Voting threshold
+- `deadline`: Voting deadline
+- `channel_id`: Channel where posted
+- `creator_id`: User who created it
+- `message_ts`: Message timestamp
+- `status`: active, approved, or rejected
 - `created_at`, `updated_at`: Timestamps
 
-**Voters Table:**
-- `id`: Unique identifier
-- `decision_id`: Reference to the decision
-- `user_id`: Slack user ID of the voter
-- `required`: Whether this user's vote is required
+### Votes Datastore
+
+Stores individual votes:
+- `id`: Vote ID (decision_id + user_id)
+- `decision_id`: Related decision
+- `user_id`: User who voted
+- `vote_type`: yes, no, or abstain
+- `voted_at`: Timestamp
+
+### Voters Datastore
+
+Stores required voters:
+- `id`: Voter ID (decision_id + user_id)
+- `decision_id`: Related decision
+- `user_id`: Required voter
+- `required`: Whether vote is required
 - `created_at`: Timestamp
 
-**Votes Table:**
-- `id`: Unique identifier
-- `decision_id`: Reference to the decision
-- `user_id`: Slack user ID of the voter
-- `vote_type`: The vote cast (yes, no, abstain)
-- `voted_at`: Timestamp of when the vote was cast
+## Migration from Azure
 
-### Features In Development
+This application has been migrated from an Azure-based architecture to Slack Native (ROSI). Key changes:
 
-🚧 **Notifications** (Coming Soon)
-- Notify required voters when decisions are created
-- Updates when votes are cast
-- Final decision notifications
+### Removed
+- ❌ Azure App Service
+- ❌ Azure Functions (Timer triggers)
+- ❌ Azure Key Vault
+- ❌ Azure DevOps integration (automated ADR push)
+- ❌ Terraform infrastructure
+- ❌ Node.js/npm dependencies
+- ❌ Docker containers
 
-🚧 **Decision Analytics** (Coming Soon)
-- Real-time vote counting and progress tracking
-- Consensus calculation based on criteria
-- Decision status updates (approved/rejected)
-- Historical decision analytics
+### Added
+- ✅ Deno runtime on Slack ROSI
+- ✅ Slack Datastores
+- ✅ Slack Workflows and Functions
+- ✅ Slack scheduled triggers
+- ✅ Manual ADR workflow (markdown posted to Slack)
 
-## Infrastructure
+### Benefits
+- 90% cost reduction ($10-50/mo vs $171-266/mo)
+- 85% less maintenance (1-2 hrs/mo vs 8-12 hrs/mo)
+- Zero secret management overhead
+- Automatic scaling and reliability
+- Simplified deployment and operations
 
-Infrastructure is managed using Terraform. See the `terraform/` directory for:
+## Cost Estimate
 
-- Azure resource definitions
-- Environment configurations
-- State management setup
+### Low Volume (<50 decisions/month)
+- Workflow executions: $5-15/month
+- Datastore operations: $5-10/month
+- Scheduled triggers: $10-15/month
+- **Total: $20-40/month**
 
-To initialize Terraform:
+### Medium Volume (50-200 decisions/month)
+- Workflow executions: $15-30/month
+- Datastore operations: $10-20/month
+- Scheduled triggers: $10-15/month
+- **Total: $35-65/month**
 
-```bash
-cd terraform
-terraform init
-terraform plan
-```
-
-## Azure Integrations
-
-ConsensusBot integrates with Azure services for enhanced functionality:
-
-### Azure Timer Function (Nudger)
-
-The Nudger is an automated reminder system that runs on a schedule (Monday-Friday at 9:00 AM UTC) to send DM reminders to voters who haven't cast their votes.
-
-**Key Features:**
-- Scheduled execution via Azure Timer Trigger (cron: `0 0 9 * * 1-5`)
-- Queries database for active decisions with missing voters
-- Sends personalized Slack DMs with decision details and voting links
-- Comprehensive logging and error handling
-
-**Deployment:**
-
-1. **Configure Azure Function App:**
-```bash
-# Create Function App
-az functionapp create \
-  --name consensusbot-nudger \
-  --resource-group consensus-bot-rg \
-  --consumption-plan-location eastus \
-  --runtime node \
-  --runtime-version 18 \
-  --functions-version 4
-```
-
-2. **Set Environment Variables:**
-```bash
-az functionapp config appsettings set \
-  --name consensusbot-nudger \
-  --resource-group consensus-bot-rg \
-  --settings \
-    SLACK_BOT_TOKEN=xoxb-your-token \
-    SLACK_SIGNING_SECRET=your-secret \
-    DATABASE_PATH=/home/site/wwwroot/data/consensus.db
-```
-
-3. **Deploy Function:**
-```bash
-cd azure-functions
-func azure functionapp publish consensusbot-nudger
-```
-
-See [Reminder Deployment Guide](docs/REMINDER_DEPLOYMENT.md) for complete instructions.
-
-### Azure DevOps Integration
-
-ConsensusBot can automatically generate and push Architecture Decision Records (ADRs) to Azure DevOps repositories.
-
-**Key Features:**
-- Generate ADR markdown files from finalized decisions
-- Push ADRs to `KB.ProcessDocs` repository (or configured repo)
-- Include vote statistics, outcomes, and decision metadata
-- Support for all consensus criteria (Simple Majority, Supermajority, Unanimity)
-
-**Configuration:**
-
-Set the following environment variables:
-```bash
-AZURE_DEVOPS_ORG=your-organization
-AZURE_DEVOPS_PROJECT=your-project
-AZURE_DEVOPS_REPO=KB.ProcessDocs
-AZURE_DEVOPS_PAT=your-personal-access-token
-```
-
-**Usage Example:**
-```javascript
-const { createAzureDevOpsClient, pushADRToRepository } = require('./src/utils/azureDevOps');
-
-// Create client
-const adoClient = createAzureDevOpsClient();
-
-// Push ADR for a finalized decision
-const result = await pushADRToRepository(decision, votes, outcome, adoClient);
-console.log(`ADR pushed: ${result.filePath}`);
-```
-
-**ADR Format:**
-Generated ADRs follow the standard template with:
-- Decision status (Accepted/Rejected)
-- Context and proposal details
-- Voting results and statistics
-- Consequences analysis
-- Implementation notes
-- References to Slack messages and database records
-
-## Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
+*Note: Costs may be included in Enterprise Grid plans at no additional charge.*
 
 ## Documentation
 
-Additional documentation can be found in the `docs/` directory:
+Additional documentation:
 
-### Core Documentation
-- [Local Setup Guide](docs/LOCAL_SETUP.md) - Getting started with local development
-- [Docker Deployment](docs/DOCKER.md) - Running with Docker
-- [Decision Finalization](docs/FINALIZATION.md) - Automatic decision finalization workflow
-- [Voting Backend](docs/VOTING_BACKEND.md) - Voting validation and decision outcome logic
-- [Reminder System Deployment](docs/REMINDER_DEPLOYMENT.md) - Automated voter reminder system
-- [Azure DevOps Integration](docs/AZURE_DEVOPS.md) - ADR generation and repository integration
+- [Architecture Re-evaluation](docs/SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md) - Detailed analysis of migration decision
+- [Slack Automation Documentation](https://api.slack.com/automation) - Official Slack automation docs
+- [Deno Manual](https://deno.land/manual) - Deno runtime documentation
 
-### Azure Functions
-- [Nudger Timer Function](azure-functions/nudger/README.md) - Scheduled reminder function
+## Troubleshooting
 
-### Architecture
-- [Architecture Decision Records (ADRs)](docs/adr/) - Key architectural decisions
-- [Stage 1 Summary](docs/STAGE1_SUMMARY.md) - Initial implementation overview
-- **[Architecture Re-evaluation: Slack Native vs Azure](AZURE_VS_SLACK_QUICK_REFERENCE.md)** - Quick reference comparing architectures
-- [Detailed Slack Native Analysis](docs/SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md) - Comprehensive evaluation with new constraints
-- [Architecture Decision: Migrate to Slack Native](ARCHITECTURE_DECISION_SLACK_NATIVE.md) - Formal ADR for migration recommendation
+### App not responding to /consensus command
+
+1. Check that triggers are installed:
+   ```bash
+   slack triggers list
+   ```
+
+2. Recreate the trigger if needed:
+   ```bash
+   slack triggers create --trigger-def triggers/consensus_command.ts
+   ```
+
+### Datastores not working
+
+Ensure your Slack plan supports Datastores (requires paid plan). Check datastore status:
+
+```bash
+slack datastore list
+```
+
+### Reminders not sending
+
+Check the scheduled trigger status:
+
+```bash
+slack triggers list
+```
+
+Look for the "Send Voter Reminders" trigger and verify it's active.
+
+### View detailed logs
+
+```bash
+slack activity --tail
+```
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
@@ -519,66 +413,30 @@ This project is licensed under the MIT License.
 
 ## Support
 
-For questions or issues, please:
+For questions or issues:
 
-1. Check the documentation in the `docs/` directory
-2. Search existing [GitHub Issues](https://github.com/alex-thorne/ConsensusBot/issues)
+1. Check the documentation
+2. Search [GitHub Issues](https://github.com/alex-thorne/ConsensusBot/issues)
 3. Create a new issue if needed
 
 ## Roadmap
 
-### Stage 1: Application Scaffolding ✅ (Completed)
-- [x] Main entry point with Bolt SDK
-- [x] Robust folder structure (commands/, modals/, utils/, database/)
-- [x] Environment management with dotenv
-- [x] Basic `/consensus` slash command
-- [x] Interactive modal for decision inputs
-- [x] Logging and error handling
-- [x] Docker setup and documentation
-- [x] Initial test suite (26 tests passing)
+### Completed ✅
+- [x] Slack Native ROSI migration
+- [x] Datastore-based state management
+- [x] Automated voter reminders
+- [x] ADR generation for manual archival
+- [x] Three consensus criteria (Simple, Super, Unanimous)
+- [x] Deadline enforcement
 
-### Stage 2: Database Integration ✅ (Completed)
-- [x] Database schema design (SQLite)
-- [x] Decision persistence
-- [x] Vote tracking system
-- [x] Voter management
-- [x] Database utilities and queries
-- [x] Comprehensive test coverage (54 tests passing)
-
-### Stage 3: Voting Mechanisms ✅ (Completed)
-- [x] Vote submission interface with Block Kit buttons
-- [x] Interactive Yes/No/Abstain voting
-- [x] Vote recording and updates
-- [x] Message pinning for visibility
-- [x] Enhanced modal with proposal and deadline fields
-- [x] Vote eligibility validation
-- [x] Decision status checks during voting
-
-### Stage 4: Decision Outcome & Reminders ✅ (Completed)
-- [x] Consensus calculation engine (Simple Majority, Supermajority, Unanimity)
-- [x] Decision outcome logic with edge case handling
-- [x] Deadlock detection algorithms
-- [x] Vote counting and summary queries
-- [x] Missing voter identification
-- [x] Automated reminder system (Nudger) with DM capability
-- [x] Comprehensive documentation for voting backend
-- [x] Full unit test coverage for decision logic
-
-### Stage 5: Azure Integration & Advanced Features ✅ (In Progress)
-- [x] Azure Timer Function for automated reminders (Mon-Fri schedule)
-- [x] Azure DevOps integration foundation
-- [x] ADR (Architecture Decision Record) generation from decisions
-- [x] API client for pushing ADRs to Azure DevOps repositories
-- [x] Comprehensive test coverage for Azure integrations
-- [ ] Deploy reminder system to Azure Functions
-- [ ] Real-time vote counting and progress updates in Slack messages
-- [ ] Automatic decision status updates based on outcomes
-- [ ] Decision analytics dashboard and reporting
-- [ ] Deadline enforcement and automatic decision closure
-- [ ] Integration with project management tools
-- [ ] Support for multiple decision-making frameworks
-- [ ] Admin controls and permissions
+### Future Enhancements 🚧
+- [ ] Multi-channel support
+- [ ] Decision templates
+- [ ] Analytics dashboard
+- [ ] Vote delegation
+- [ ] Mobile app support
+- [ ] Custom success criteria
 
 ---
 
-Made with ❤️ for better team collaboration
+Made with ❤️ for better team collaboration using Slack Native infrastructure
