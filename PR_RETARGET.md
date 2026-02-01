@@ -3,72 +3,52 @@
 ## Objective
 This pull request needs to be retargeted to merge into the `development` branch instead of `main`.
 
-## Steps to Retarget
+## Quick Start
 
-### 1. Create the `development` branch (if it doesn't exist)
+The `development` branch has been created locally in this repository. To complete the retargeting:
 
-If the `development` branch doesn't exist on GitHub yet, create it:
-
+**Step 1: Push the development branch**
 ```bash
-# Create development branch from initial state
-git checkout --orphan development
-git rm -rf .
-echo "# ConsensusBot" > README.md
-echo "A Slack App to facilitate team decision-making" >> README.md
-git add README.md
-git commit -m "Initial commit"
-git push origin development
+git checkout development  
+git push -u origin development
 ```
 
-Alternatively, if there's an existing commit you want to base `development` on, you can use:
-```bash
-git checkout -b development <commit-sha>
-git push origin development
-```
+**Step 2: Change PR base on GitHub** (choose one method below)
 
-### 2. Change the Pull Request Base Branch
+Note: A local `development` branch exists at commit `8d004eb` with the initial README.
 
-On GitHub:
-1. Navigate to the pull request page
-2. Click on "Edit" next to the PR title
-3. Click on the base branch dropdown (currently showing `main`)
-4. Select `development` as the new base branch
-5. GitHub will automatically rebase the PR onto the new base
+## Detailed Steps
 
-### 3. Verify the Changes
+### Option A: Using GitHub Web UI (Recommended)
 
-After retargeting:
-- Check that the PR shows changes between `copilot/revise-consensusbot-architecture` and `development`
-- Verify that all commits are still present
-- Ensure CI/CD checks pass (if configured)
+1. Push the `development` branch to origin (see Quick Start above)
+2. Navigate to the pull request page on GitHub
+3. Click the "Edit" button next to the PR title
+4. Click on the base branch dropdown (currently showing `main` or default branch)
+5. Select `development` as the new base branch
+6. GitHub will automatically update the PR to show changes against `development`
 
-## Current State
+### Option B: Using GitHub CLI
 
-- **Feature Branch**: `copilot/revise-consensusbot-architecture`
-- **Current Base**: `main` (or default branch)
-- **Desired Base**: `development`
-
-## Why This Change?
-
-Merging to `development` instead of `main` follows a standard git workflow where:
-- `development` contains ongoing work and integration
-- `main` contains stable, production-ready code
-- Feature branches merge to `development` first
-- `development` is periodically merged to `main` after testing
-
-## Alternative: Using GitHub CLI
-
-If you have the GitHub CLI installed, you can change the base branch with:
+If you have the GitHub CLI installed:
 
 ```bash
+# First, push development branch
+git checkout development
+git push -u origin development
+
+# Then change the PR base
 gh pr edit <pr-number> --base development
 ```
 
-## Alternative: Using GitHub API
-
-You can also use the GitHub API to change the base branch:
+### Option C: Using GitHub API
 
 ```bash
+# First, push development branch  
+git checkout development
+git push -u origin development
+
+# Then update via API
 curl -X PATCH \
   -H "Authorization: token YOUR_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
@@ -76,4 +56,26 @@ curl -X PATCH \
   -d '{"base":"development"}'
 ```
 
-Replace `YOUR_TOKEN` with a GitHub personal access token and `<pr-number>` with the PR number.
+Replace `YOUR_TOKEN` with a GitHub personal access token and `<pr-number>` with the actual PR number.
+
+## Branch Information
+
+- **Feature Branch**: `copilot/revise-consensusbot-architecture`  
+- **Current PR Base**: `main` (or repository default branch)  
+- **Target PR Base**: `development`  
+- **Local development branch**: `8d004eb` (Initial commit with README)
+
+## Why Use a development Branch?
+
+This follows the standard git flow workflow:
+- `main` - Stable, production-ready code
+- `development` - Integration branch for ongoing work  
+- Feature branches - Merge to `development` first, then `development` merges to `main` after testing
+
+## Verification
+
+After retargeting, verify that:
+- [ ] The PR base shows `development` instead of `main`
+- [ ] All commits from the feature branch are still visible in the PR
+- [ ] The PR diff shows changes relative to the `development` branch
+- [ ] CI/CD checks pass (if configured)
