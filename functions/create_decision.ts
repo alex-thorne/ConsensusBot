@@ -279,6 +279,11 @@ export default SlackFunction(
     const channel_id = body.container.channel_id;
     const message_ts = body.container.message_ts;
 
+    // Log button click
+    console.log(
+      `Vote button clicked: decision_id=${decision_id}, user_id=${user_id}, vote_type=${vote_type}`,
+    );
+
     // Get decision
     const getDecision = await client.apps.datastore.get({
       datastore: DecisionDatastore.name,
@@ -295,6 +300,8 @@ export default SlackFunction(
     }
 
     const decision = getDecision.item as DecisionRecord;
+
+    console.log(`Decision validated: decision_id=${decision_id}, status=${decision.status}`);
 
     // Check if decision is still active
     if (decision.status !== "active") {
@@ -321,11 +328,13 @@ export default SlackFunction(
       return;
     }
 
+    console.log(`Voter eligibility confirmed: user_id=${user_id}`);
+
     // Record or update vote
     const vote_id = `${decision_id}_${user_id}`;
     const now = new Date().toISOString();
 
-    await client.apps.datastore.put({
+    const putVote = await client.apps.datastore.put({
       datastore: VoteDatastore.name,
       item: {
         id: vote_id,
@@ -335,6 +344,169 @@ export default SlackFunction(
         voted_at: now,
       },
     });
+
+    if (!putVote.ok) {
+      console.error(
+        `Failed to record vote: decision_id=${decision_id}, user_id=${user_id}, error=${putVote.error}`,
+      );
+      await client.chat.postEphemeral({
+        channel: channel_id,
+        user: user_id,
+        text: `❌ Failed to record your vote: ${putVote.error}. Please try again.`,
+      });
+      return;
+    }
+
+    console.log(
+      `Vote recorded successfully: user_id=${user_id}, vote_type=${vote_type}, decision_id=${decision_id}`,
+    );
+
+    // Get all votes for this decision to update the message
+    const votesResponse = await client.apps.datastore.query({
+      datastore: VoteDatastore.name,
+      expression: "#decision_id = :decision_id",
+      expression_attributes: { "#decision_id": "decision_id" },
+      expression_values: { ":decision_id": decision_id },
+    });
+
+    // Get all required voters for this decision
+    const votersResponse = await client.apps.datastore.query({
+      datastore: VoterDatastore.name,
+      expression: "#decision_id = :decision_id",
+      expression_attributes: { "#decision_id": "decision_id" },
+      expression_values: { ":decision_id": decision_id },
+    });
+
+    // Update the decision message to show vote progress
+    if (votesResponse.ok && votersResponse.ok) {
+      const voteCount = votesResponse.items.length;
+      const requiredCount = votersResponse.items.length;
+      const votes = votesResponse.items as unknown as VoteRecord[];
+
+      // Get voter names
+      const voterNames: string[] = [];
+      for (const vote of votes) {
+        voterNames.push(`<@${vote.user_id}>`);
+      }
+      const votedText = voterNames.length > 0
+        ? `\nVoted: ${voterNames.join(", ")}`
+        : "";
+
+      const updateResult = await client.chat.update({
+        channel: channel_id,
+        ts: message_ts,
+        text: `New Decision: ${decision.name}`,
+        blocks: [
+          {
+            type: "header",
+            text: {
+              type: "plain_text",
+              text: `🗳️ ${decision.name}`,
+              emoji: true,
+            },
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*Proposal:*\n${decision.proposal}`,
+            },
+          },
+          {
+            type: "section",
+            fields: [
+              {
+                type: "mrkdwn",
+                text: `*Success Criteria:*\n${
+                  (decision.success_criteria as string)
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (l: string) => l.toUpperCase())
+                }`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*Deadline:*\n${decision.deadline}`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*Required Voters:*\n${requiredCount} voters`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*Status:*\n🟢 Active\n*Votes:* ${voteCount}/${requiredCount}${votedText}`,
+              },
+            ],
+          },
+          {
+            type: "divider",
+          },
+          {
+            type: "actions",
+            block_id: "voting_actions",
+            elements: [
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "✅ Yes",
+                  emoji: true,
+                },
+                style: "primary",
+                action_id: "vote_yes",
+                value: decision_id,
+              },
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "❌ No",
+                  emoji: true,
+                },
+                style: "danger",
+                action_id: "vote_no",
+                value: decision_id,
+              },
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "⚪ Abstain",
+                  emoji: true,
+                },
+                action_id: "vote_abstain",
+                value: decision_id,
+              },
+            ],
+          },
+          {
+            type: "context",
+            elements: [
+              {
+                type: "mrkdwn",
+                text: `Created by <@${decision.creator_id}> | Vote by ${decision.deadline}`,
+              },
+            ],
+          },
+        ],
+      });
+
+      if (!updateResult.ok) {
+        console.error(
+          `Failed to update decision message with vote progress: ${updateResult.error}`,
+        );
+      }
+    } else {
+      if (!votesResponse.ok) {
+        console.error(
+          `Failed to query votes for decision ${decision_id}: ${votesResponse.error}`,
+        );
+      }
+      if (!votersResponse.ok) {
+        console.error(
+          `Failed to query voters for decision ${decision_id}: ${votersResponse.error}`,
+        );
+      }
+    }
 
     // Send confirmation
     const voteEmoji = vote_type === "yes"
@@ -355,6 +527,8 @@ export default SlackFunction(
       decision_id,
       decision.deadline as string,
     );
+
+    console.log(`Should finalize decision: ${shouldFinalize}`);
 
     if (shouldFinalize) {
       await finalizeDecision(client, decision, channel_id, message_ts);
