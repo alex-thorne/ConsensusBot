@@ -262,16 +262,15 @@ export default SlackFunction(
       }
     }
 
+    // Keep workflow running to handle button clicks
+    // Don't return outputs - workflow will complete when decision is finalized
     return {
-      outputs: {
-        decision_id: decision_id,
-        message_ts: message_ts,
-      },
+      completed: false,
     };
   },
 ).addBlockActionsHandler(
   ["vote_yes", "vote_no", "vote_abstain"],
-  async ({ action, body, client }) => {
+  async ({ action, body, client, complete }) => {
     // Extract data from the button click
     const decision_id = action.value;
     const vote_type = action.action_id.replace(/^vote_/, "");
@@ -531,7 +530,7 @@ export default SlackFunction(
     console.log(`Should finalize decision: ${shouldFinalize}`);
 
     if (shouldFinalize) {
-      await finalizeDecision(client, decision, channel_id, message_ts);
+      await finalizeDecision(client, decision, channel_id, message_ts, complete, decision_id);
     }
   },
 );
@@ -579,6 +578,8 @@ async function finalizeDecision(
   decision: DecisionRecord,
   channel_id: string,
   message_ts: string,
+  complete: (result: { outputs: { decision_id: string; message_ts: string } }) => void,
+  decision_id: string,
 ) {
   // Get all votes
   const votesResponse = await client.apps.datastore.query({
@@ -706,5 +707,13 @@ async function finalizeDecision(
     thread_ts: message_ts,
     blocks: adrBlocks,
     text: "ADR Generated - See thread for details",
+  });
+
+  // Complete the workflow now that the decision is finalized
+  complete({
+    outputs: {
+      decision_id: decision_id,
+      message_ts: message_ts,
+    },
   });
 }

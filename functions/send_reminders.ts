@@ -55,8 +55,14 @@ export default SlackFunction(
 
     // Process each active decision
     for (const decision of activeDecisions) {
-      // Skip if deadline has passed (will be handled by finalization)
+      // Skip decisions with passed deadlines
+      // Note: These decisions will be auto-finalized when any voter clicks a vote button,
+      // as the button handler checks for expired deadlines
       if (isDeadlinePassed(decision.deadline as string)) {
+        console.log(
+          `Skipping decision ${decision.id} - deadline has passed. ` +
+          `Decision will be finalized when a vote button is clicked.`,
+        );
         continue;
       }
 
