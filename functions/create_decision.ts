@@ -578,7 +578,7 @@ async function finalizeDecision(
   decision: DecisionRecord,
   channel_id: string,
   message_ts: string,
-  complete: (output: { outputs: { decision_id: string; message_ts: string } }) => void,
+  complete: (outputs: { outputs: { decision_id: string; message_ts: string } }) => void,
   decision_id: string,
 ) {
   // Get all votes
@@ -710,7 +710,7 @@ async function finalizeDecision(
   });
 
   // Complete the workflow now that the decision is finalized
-  await complete({
+  complete({
     outputs: {
       decision_id: decision_id,
       message_ts: message_ts,
