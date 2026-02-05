@@ -1,0 +1,28 @@
+name: Integration Tests
+
+# Run integration tests on pull requests and pushes to development branch
+on:
+  push:
+    branches: [development]
+  pull_request:
+    branches: [development]
+
+jobs:
+  integration-tests:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Deno environment
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      # Run integration tests
+      - name: Run integration tests
+        run: deno test --allow-net --allow-read --allow-env tests/integration/ tests/mocks/

@@ -1,0 +1,43 @@
+name: Unit Tests
+
+# Run unit tests on pull requests and pushes to development branch
+on:
+  push:
+    branches: [development]
+  pull_request:
+    branches: [development]
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Deno environment
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      # Run unit tests
+      - name: Run unit tests
+        run: deno test --allow-read --allow-env tests/
+
+      # Generate test coverage
+      - name: Generate coverage
+        run: deno test --coverage=coverage --allow-read --allow-env tests/
+
+      # Generate coverage report
+      - name: Generate coverage report
+        run: deno coverage coverage --lcov > coverage.lcov
+
+      # Upload coverage to artifact (can be used with coverage tools later)
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.lcov

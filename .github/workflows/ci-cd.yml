@@ -1,0 +1,177 @@
+name: CI/CD Pipeline
+
+# Complete CI/CD pipeline for ConsensusBot
+on:
+  push:
+    branches: [development, main]
+  pull_request:
+    branches: [development, main]
+
+jobs:
+  # Lint and format checks
+  lint-and-format:
+    name: Lint and Format Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      
+      - name: Run Deno lint
+        run: deno lint
+      
+      - name: Check formatting
+        run: deno fmt --check
+
+  # Type checking
+  type-check:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      
+      - name: Cache Deno dependencies
+        run: deno cache manifest.ts
+      
+      - name: Type check manifest
+        run: deno check manifest.ts
+      
+      - name: Type check functions
+        run: deno check functions/*.ts
+      
+      - name: Type check workflows
+        run: deno check workflows/*.ts
+      
+      - name: Type check utilities
+        run: deno check utils/*.ts
+
+  # Slack manifest validation
+  slack-validate:
+    name: Validate Slack Manifest
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      
+      - name: Validate manifest structure
+        run: deno check manifest.ts
+      
+      - name: Verify required files
+        run: |
+          test -f manifest.ts || (echo "manifest.ts not found" && exit 1)
+          test -f deno.json || (echo "deno.json not found" && exit 1)
+          test -f slack.json || (echo "slack.json not found" && exit 1)
+          test -d datastores || (echo "datastores directory not found" && exit 1)
+          test -d functions || (echo "functions directory not found" && exit 1)
+          test -d workflows || (echo "workflows directory not found" && exit 1)
+          test -d triggers || (echo "triggers directory not found" && exit 1)
+
+  # Unit tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, type-check]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      
+      - name: Run unit tests
+        run: deno test --allow-read --allow-env tests/*.ts
+      
+      - name: Generate test coverage
+        run: deno test --coverage=coverage --allow-read --allow-env tests/*.ts
+      
+      - name: Generate coverage report
+        run: deno coverage coverage --lcov > coverage.lcov
+      
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: coverage.lcov
+
+  # Integration tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      
+      - name: Run integration tests
+        run: deno test --allow-net --allow-read --allow-env tests/integration/ tests/mocks/
+
+  # Summary job - marks overall pipeline success/failure
+  ci-success:
+    name: CI Pipeline Success
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, type-check, slack-validate, unit-tests, integration-tests]
+    if: success()
+    
+    steps:
+      - name: CI Pipeline Passed
+        run: echo "✅ All CI checks passed successfully!"
+
+  # Note: Deployment jobs would go here if configured
+  # They would require:
+  # - SLACK_TEST_TOKEN secret for test workspace deployment
+  # - SLACK_PROD_TOKEN secret for production deployment
+  # - Proper workspace configuration
+  # 
+  # Example deployment job (commented out - requires setup):
+  # deploy-test:
+  #   name: Deploy to Test Workspace
+  #   runs-on: ubuntu-latest
+  #   needs: [integration-tests]
+  #   if: github.ref == 'refs/heads/development'
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #     
+  #     - name: Setup Deno
+  #       uses: denoland/setup-deno@v1
+  #       with:
+  #         deno-version: v1.x
+  #     
+  #     - name: Install Slack CLI
+  #       run: |
+  #         curl -fsSL https://downloads.slack-edge.com/slack-cli/install.sh | bash
+  #         echo "$HOME/.slack/bin" >> $GITHUB_PATH
+  #     
+  #     - name: Deploy to test workspace
+  #       env:
+  #         SLACK_TOKEN: ${{ secrets.SLACK_TEST_TOKEN }}
+  #       run: |
+  #         slack login --token $SLACK_TOKEN
+  #         slack deploy --workspace test-workspace
