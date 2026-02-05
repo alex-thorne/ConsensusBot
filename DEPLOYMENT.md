@@ -52,6 +52,12 @@ Create the slash command trigger:
 slack triggers create --trigger-def triggers/consensus_command.ts
 ```
 
+Create the voting button trigger (essential for voting functionality):
+
+```bash
+slack triggers create --trigger-def triggers/vote_button_trigger.ts
+```
+
 Create the scheduled reminder trigger:
 
 ```bash

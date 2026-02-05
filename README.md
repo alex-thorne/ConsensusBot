@@ -129,15 +129,16 @@ This will:
 
 ### 7. Configure Triggers
 
-After deployment, set up the slash command trigger:
+After deployment, set up the triggers:
 
 ```bash
+# Slash command trigger for creating decisions
 slack triggers create --trigger-def triggers/consensus_command.ts
-```
 
-And the scheduled reminder trigger:
+# Event trigger for voting button clicks
+slack triggers create --trigger-def triggers/vote_button_trigger.ts
 
-```bash
+# Scheduled reminder trigger
 slack triggers create --trigger-def triggers/reminder_schedule.ts
 ```
 
@@ -400,6 +401,25 @@ Additional documentation:
 - [Deno Manual](https://deno.land/manual) - Deno runtime documentation
 
 ## Troubleshooting
+
+### Voting buttons showing warning triangle (⚠️)
+
+If clicking Yes/No/Abstain buttons shows a warning triangle:
+
+1. Check that the vote button trigger is installed:
+   ```bash
+   slack triggers list
+   ```
+
+2. Create the vote button trigger if it's missing:
+   ```bash
+   slack triggers create --trigger-def triggers/vote_button_trigger.ts
+   ```
+
+3. Verify the trigger is active and restart the app if needed:
+   ```bash
+   slack deploy
+   ```
 
 ### App not responding to /consensus command
 

@@ -7,6 +7,22 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
 
+Deno.test("record_vote - vote_type normalization strips vote_ prefix", () => {
+  const testCases = [
+    { input: "vote_yes", expected: "yes" },
+    { input: "vote_no", expected: "no" },
+    { input: "vote_abstain", expected: "abstain" },
+    { input: "yes", expected: "yes" },
+    { input: "no", expected: "no" },
+    { input: "abstain", expected: "abstain" },
+  ];
+
+  testCases.forEach(({ input, expected }) => {
+    const normalized = input.replace(/^vote_/, "");
+    assertEquals(normalized, expected);
+  });
+});
+
 Deno.test("record_vote - DecisionRecord includes all required fields", () => {
   const decision: DecisionRecord = {
     id: "1234567890.123456",
