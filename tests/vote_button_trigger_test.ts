@@ -110,42 +110,51 @@ Deno.test("vote_button_trigger - has all required inputs for VoteWorkflow", () =
   }
 });
 
-Deno.test("vote_button_trigger - input mapping documentation", () => {
-  // This test serves as documentation for how inputs flow from button click to workflow
-  const inputFlow = {
-    "button click": {
-      action_id: "vote_yes | vote_no | vote_abstain",
-      value: "decision_id (message timestamp)",
-    },
-    "block_actions event data": {
-      "data.actions[0].action_id": "vote_yes",
-      "data.actions[0].value": "1234567890.123456",
-      "data.user.id": "U123456",
-      "data.container.channel_id": "C123456",
-      "data.container.message_ts": "1234567890.123456",
-      "data.interactivity": "{...}",
-    },
-    "trigger mapping": {
-      decision_id: "{{data.actions.0.value}}",
-      vote_type: "{{data.actions.0.action_id}}",
-      user_id: "{{data.user.id}}",
-      channel_id: "{{data.container.channel_id}}",
-      message_ts: "{{data.container.message_ts}}",
-      interactivity: "{{data.interactivity}}",
-    },
-    "workflow receives": {
-      decision_id: "1234567890.123456",
-      vote_type: "vote_yes",
-      user_id: "U123456",
-      channel_id: "C123456",
-      message_ts: "1234567890.123456",
-      interactivity: "{...}",
-    },
+Deno.test("vote_button_trigger - validates actual input mappings against expected data paths", () => {
+  // Verify each trigger input mapping uses the correct data path from Slack's block_actions event
+  const expectedMappings = {
+    decision_id: "{{data.actions.0.value}}",
+    vote_type: "{{data.actions.0.action_id}}",
+    user_id: "{{data.user.id}}",
+    channel_id: "{{data.container.channel_id}}",
+    message_ts: "{{data.container.message_ts}}",
+    interactivity: "{{data.interactivity}}",
   };
 
-  // Validate structure
-  assertExists(inputFlow["button click"]);
-  assertExists(inputFlow["block_actions event data"]);
-  assertExists(inputFlow["trigger mapping"]);
-  assertExists(inputFlow["workflow receives"]);
+  // Validate each mapping matches expected value
+  assertEquals(
+    voteButtonTrigger.inputs?.decision_id?.value,
+    expectedMappings.decision_id,
+    "decision_id should be extracted from button value",
+  );
+
+  assertEquals(
+    voteButtonTrigger.inputs?.vote_type?.value,
+    expectedMappings.vote_type,
+    "vote_type should be extracted from action_id",
+  );
+
+  assertEquals(
+    voteButtonTrigger.inputs?.user_id?.value,
+    expectedMappings.user_id,
+    "user_id should be extracted from event user",
+  );
+
+  assertEquals(
+    voteButtonTrigger.inputs?.channel_id?.value,
+    expectedMappings.channel_id,
+    "channel_id should be extracted from container",
+  );
+
+  assertEquals(
+    voteButtonTrigger.inputs?.message_ts?.value,
+    expectedMappings.message_ts,
+    "message_ts should be extracted from container",
+  );
+
+  assertEquals(
+    voteButtonTrigger.inputs?.interactivity?.value,
+    expectedMappings.interactivity,
+    "interactivity should be extracted from event data",
+  );
 });
