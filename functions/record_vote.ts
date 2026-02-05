@@ -64,7 +64,9 @@ export const RecordVoteFunction = DefineFunction({
 export default SlackFunction(
   RecordVoteFunction,
   async ({ inputs, client }) => {
-    const { decision_id, vote_type, user_id, channel_id, message_ts } = inputs;
+    const { decision_id, user_id, channel_id, message_ts } = inputs;
+    // Normalize vote_type: strip "vote_" prefix if present
+    const vote_type = inputs.vote_type.replace(/^vote_/, "");
 
     // Get decision
     const getDecision = await client.apps.datastore.get({
