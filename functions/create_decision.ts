@@ -392,7 +392,7 @@ export default SlackFunction(
         ? `\nVoted: ${voterNames.join(", ")}`
         : "";
 
-      await client.chat.update({
+      const updateResult = await client.chat.update({
         channel: channel_id,
         ts: message_ts,
         text: `New Decision: ${decision.name}`,
@@ -489,6 +489,23 @@ export default SlackFunction(
           },
         ],
       });
+
+      if (!updateResult.ok) {
+        console.error(
+          `Failed to update decision message with vote progress: ${updateResult.error}`,
+        );
+      }
+    } else {
+      if (!votesResponse.ok) {
+        console.error(
+          `Failed to query votes for decision ${decision_id}: ${votesResponse.error}`,
+        );
+      }
+      if (!votersResponse.ok) {
+        console.error(
+          `Failed to query voters for decision ${decision_id}: ${votersResponse.error}`,
+        );
+      }
     }
 
     // Send confirmation
