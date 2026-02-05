@@ -11,6 +11,8 @@ jobs:
   integration-tests:
     name: Run Integration Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       # Check out the repository code
