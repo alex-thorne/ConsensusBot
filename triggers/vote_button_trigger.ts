@@ -12,7 +12,12 @@ const voteButtonTrigger: Trigger<typeof VoteWorkflow.definition> = {
   workflow: `#/workflows/${VoteWorkflow.definition.callback_id}`,
   event: {
     event_type: "slack#/events/block_actions",
-    action_ids: ["vote_yes", "vote_no", "vote_abstain"],
+    filter: {
+      version: 1,
+      root: {
+        statement: "{{data.action_id}} == 'vote_yes' OR {{data.action_id}} == 'vote_no' OR {{data.action_id}} == 'vote_abstain'",
+      },
+    },
   },
   inputs: {
     interactivity: {

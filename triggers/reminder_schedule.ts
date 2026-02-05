@@ -13,9 +13,9 @@ const reminderScheduleTrigger: Trigger<
   description: "Send DM reminders to voters who haven't voted",
   workflow: `#/workflows/${SendRemindersWorkflow.definition.callback_id}`,
   schedule: {
-    start_time: "2024-01-01T09:00:00Z",
+    start_time: "2026-02-06T09:00:00Z",
     frequency: {
-      type: "daily",
+      type: "weekly",
       repeats_every: 1,
       on_days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     },
