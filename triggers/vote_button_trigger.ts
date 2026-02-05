@@ -19,19 +19,19 @@ const voteButtonTrigger: Trigger<typeof VoteWorkflow.definition> = {
       value: "{{data.interactivity}}",
     },
     decision_id: {
-      value: "{{data.value}}",
+      value: "{{data.actions.0.value}}",
     },
     vote_type: {
-      value: "{{data.action_id}}",
+      value: "{{data.actions.0.action_id}}",
     },
     user_id: {
-      value: "{{data.user_id}}",
+      value: "{{data.user.id}}",
     },
     channel_id: {
-      value: "{{data.channel_id}}",
+      value: "{{data.container.channel_id}}",
     },
     message_ts: {
-      value: "{{data.message_ts}}",
+      value: "{{data.container.message_ts}}",
     },
   },
 };
