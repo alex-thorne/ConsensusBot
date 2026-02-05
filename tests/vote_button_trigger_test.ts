@@ -37,14 +37,19 @@ Deno.test("vote_button_trigger - listens for block_actions events", () => {
   assertEquals(voteButtonTrigger.event.event_type, "slack#/events/block_actions");
 });
 
-Deno.test("vote_button_trigger - filters for voting action_ids", () => {
-  assertExists(voteButtonTrigger.event?.action_ids);
-  const actionIds = voteButtonTrigger.event.action_ids;
+Deno.test("vote_button_trigger - has filter for voting action_ids", () => {
+  assertExists(voteButtonTrigger.event?.filter);
+  const filter = voteButtonTrigger.event.filter;
   
-  assertEquals(actionIds.length, 3);
-  assertEquals(actionIds.includes("vote_yes"), true);
-  assertEquals(actionIds.includes("vote_no"), true);
-  assertEquals(actionIds.includes("vote_abstain"), true);
+  assertEquals(filter.version, 1);
+  assertExists(filter.root);
+  assertExists(filter.root.statement);
+  
+  // Filter should check for vote_yes, vote_no, or vote_abstain
+  const statement = filter.root.statement;
+  assertEquals(statement.includes("vote_yes"), true);
+  assertEquals(statement.includes("vote_no"), true);
+  assertEquals(statement.includes("vote_abstain"), true);
 });
 
 Deno.test("vote_button_trigger - maps interactivity input", () => {
