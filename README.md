@@ -135,14 +135,11 @@ After deployment, set up the triggers:
 # Slash command trigger for creating decisions
 slack triggers create --trigger-def triggers/consensus_command.ts
 
-# Event trigger for voting button clicks
-slack triggers create --trigger-def triggers/vote_button_trigger.ts
-
 # Scheduled reminder trigger
 slack triggers create --trigger-def triggers/reminder_schedule.ts
 ```
 
-**Important**: The vote button trigger (`vote_button_trigger.ts`) is required for voting buttons to work. If you skip this step, clicking voting buttons will show a warning triangle (⚠️). See the [Troubleshooting Guide](docs/TRIGGER_TROUBLESHOOTING.md) if you encounter issues.
+**Note**: Voting buttons work automatically through block action handlers - no separate trigger is needed.
 
 Verify all triggers are installed:
 
@@ -291,16 +288,7 @@ See [.github/workflows/README.md](.github/workflows/README.md) for details.
 
 If clicking voting buttons shows a warning triangle and no response:
 
-**Cause**: The vote button trigger hasn't been installed.
-
-**Solution**:
-```bash
-slack triggers create --trigger-def triggers/vote_button_trigger.ts
-```
-
-**Verify**: Run `slack triggers list` and ensure you see "Record Vote on Decision" (event trigger).
-
-For detailed troubleshooting steps, see [docs/TRIGGER_TROUBLESHOOTING.md](docs/TRIGGER_TROUBLESHOOTING.md).
+**Note**: This issue was fixed. Voting buttons now use block action handlers directly and don't require a separate trigger.
 
 ### Other Issues
 
@@ -318,16 +306,14 @@ ConsensusBot/
 │   ├── votes.ts            # Vote records
 │   └── voters.ts           # Required voters per decision
 ├── functions/               # Custom Slack functions
-│   ├── create_decision.ts  # Create decision and post voting message
-│   ├── record_vote.ts      # Record vote and check finalization
+│   ├── create_decision.ts  # Create decision, post voting message, handle votes
+│   ├── record_vote.ts      # Standalone vote recording (legacy)
 │   └── send_reminders.ts   # Send DM reminders to voters
 ├── workflows/               # Slack workflows
 │   ├── create_decision.ts  # Decision creation workflow
-│   ├── vote.ts             # Voting workflow
 │   └── send_reminders.ts   # Reminder workflow
 ├── triggers/                # Workflow triggers
 │   ├── consensus_command.ts    # /consensus slash command
-│   ├── vote_button_trigger.ts  # Voting button event trigger
 │   └── reminder_schedule.ts    # Scheduled reminder trigger
 ├── utils/                   # Utility functions
 │   ├── decision_logic.ts   # Vote counting and outcome calculation
@@ -439,22 +425,14 @@ Additional documentation:
 
 ### Voting buttons showing warning triangle (⚠️)
 
-If clicking Yes/No/Abstain buttons shows a warning triangle:
+This issue has been fixed. Voting buttons now use block action handlers directly. If you still see warning triangles:
 
-1. Check that the vote button trigger is installed:
-   ```bash
-   slack triggers list
-   ```
-
-2. Create the vote button trigger if it's missing:
-   ```bash
-   slack triggers create --trigger-def triggers/vote_button_trigger.ts
-   ```
-
-3. Verify the trigger is active and restart the app if needed:
+1. Redeploy the app:
    ```bash
    slack deploy
    ```
+
+2. Create a new decision to test with the updated code.
 
 ### App not responding to /consensus command
 

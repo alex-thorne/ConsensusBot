@@ -1,10 +1,24 @@
 # Vote Button Data Flow Documentation
 
-This document explains how data flows from a button click through the trigger, workflow, and function to record a vote.
+> **⚠️ OUTDATED**: This document describes the old implementation using event triggers and workflows. As of the latest update, voting buttons use block action handlers (`.addBlockActionsHandler()`) directly in the `create_decision` function. See [TRIGGER_TROUBLESHOOTING.md](TRIGGER_TROUBLESHOOTING.md) for current implementation.
 
-## Overview
+This document explains how data **used to flow** from a button click through the trigger, workflow, and function to record a vote (historical reference only).
 
-When a user clicks a voting button (Yes/No/Abstain), the following sequence occurs:
+## Overview (Historical)
+
+When a user clicks a voting button (Yes/No/Abstain), the following sequence **now** occurs:
+
+```
+User clicks button
+    ↓
+Slack sends block_actions interaction payload
+    ↓
+CreateDecisionFunction's block action handler catches it
+    ↓
+Handler validates and records vote directly
+```
+
+### Old Flow (for reference):
 
 ```
 User clicks button

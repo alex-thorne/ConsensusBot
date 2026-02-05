@@ -1,18 +1,24 @@
 # Voting Button Trigger Implementation Summary
 
+> **⚠️ OUTDATED**: This document describes the old implementation using event triggers. As of the latest update, voting buttons now use block action handlers directly (`.addBlockActionsHandler()`), which is the correct approach for Slack's ROSI platform. See [TRIGGER_TROUBLESHOOTING.md](TRIGGER_TROUBLESHOOTING.md) for current implementation details.
+
 ## Overview
 
-This document summarizes the complete implementation and validation of the voting button trigger for ConsensusBot.
+This document summarizes the historical implementation of the voting button trigger for ConsensusBot.
 
 ## Problem Statement
 
 Users experienced voting button failures (warning triangle ⚠️) when clicking Yes/No/Abstain buttons on decision messages. The root cause was that the `vote_button_trigger.ts` event trigger was not installed in the Slack workspace.
 
-## Solution
+## Solution (Historical - Now Replaced)
 
-The trigger file (`triggers/vote_button_trigger.ts`) already exists in the codebase (added in PR #19). This PR enhances the implementation with comprehensive documentation, testing, and troubleshooting resources to prevent and resolve installation issues.
+The trigger file (`triggers/vote_button_trigger.ts`) was used to catch block_actions events, but Slack does not support `slack#/events/block_actions` as an event trigger type. This approach has been replaced with block action handlers.
 
-## Implementation Details
+## Current Implementation
+
+Voting buttons now work through `.addBlockActionsHandler()` in the `create_decision` function. No separate trigger is needed. See the main README and TRIGGER_TROUBLESHOOTING.md for details.
+
+## Implementation Details (Historical)
 
 ### Core Trigger Configuration
 
