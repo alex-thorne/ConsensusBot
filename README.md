@@ -252,8 +252,8 @@ slack env list
 
 ### Code Quality & CI
 
-The project uses GitHub Actions for continuous integration with Deno-based
-checks:
+The project uses GitHub Actions for continuous integration with comprehensive
+testing and quality checks:
 
 **Run checks locally:**
 
@@ -272,15 +272,40 @@ deno check manifest.ts
 deno check functions/*.ts
 deno check workflows/*.ts
 deno check utils/*.ts
+
+# Run all tests
+deno test --allow-all tests/
+
+# Run unit tests only
+deno test --allow-read --allow-env tests/*.ts
+
+# Run integration tests only
+deno test --allow-net --allow-read --allow-env tests/integration/
+
+# Generate test coverage
+deno test --coverage=coverage --allow-all tests/
+deno coverage coverage
 ```
 
-**CI Workflows:**
+**CI/CD Workflows:**
 
+- **ci-cd.yml**: Complete CI/CD pipeline (lint, format, type check, tests)
+- **unit-tests.yml**: Unit tests with coverage reporting
+- **integration-tests.yml**: Integration tests with mocked Slack client
 - **deno-lint.yml**: Linting and formatting validation
 - **deno-check.yml**: TypeScript type checking
 - **slack-validate.yml**: Slack manifest validation
 
-See [.github/workflows/README.md](.github/workflows/README.md) for details.
+**Testing Documentation:**
+
+See [docs/CI_CD_TESTING.md](docs/CI_CD_TESTING.md) for comprehensive testing guide including:
+- How to write and run tests
+- Unit test examples
+- Integration test examples with mocks
+- Test coverage reporting
+- CI/CD pipeline details
+
+See [.github/workflows/README.md](.github/workflows/README.md) for workflow details.
 
 ## Troubleshooting
 
@@ -301,10 +326,20 @@ If clicking voting buttons shows a warning triangle and no response:
 
 ```
 ConsensusBot/
+├── .github/
+│   └── workflows/           # CI/CD workflows
+│       ├── ci-cd.yml       # Complete CI/CD pipeline
+│       ├── unit-tests.yml  # Unit test workflow
+│       ├── integration-tests.yml  # Integration test workflow
+│       ├── deno-lint.yml   # Linting workflow
+│       ├── deno-check.yml  # Type checking workflow
+│       └── slack-validate.yml  # Manifest validation workflow
 ├── datastores/              # Slack Datastore definitions
 │   ├── decisions.ts        # Decision metadata
 │   ├── votes.ts            # Vote records
 │   └── voters.ts           # Required voters per decision
+├── docs/                    # Documentation
+│   └── CI_CD_TESTING.md    # Testing guide
 ├── functions/               # Custom Slack functions
 │   ├── create_decision.ts  # Create decision, post voting message, handle votes
 │   ├── record_vote.ts      # Standalone vote recording (legacy)
@@ -319,6 +354,14 @@ ConsensusBot/
 │   ├── decision_logic.ts   # Vote counting and outcome calculation
 │   ├── date_utils.ts       # Date/deadline utilities
 │   └── adr_generator.ts    # ADR markdown generation
+├── tests/                   # Test files
+│   ├── *.ts                # Unit tests
+│   ├── integration/        # Integration tests
+│   │   ├── create_decision_test.ts
+│   │   ├── record_vote_test.ts
+│   │   └── send_reminders_test.ts
+│   └── mocks/              # Mock implementations
+│       └── slack_client.ts # Mock Slack client
 ├── manifest.ts              # Slack app manifest
 ├── deno.json                # Deno configuration
 ├── slack.json               # Slack CLI configuration
