@@ -3,7 +3,6 @@ import DecisionDatastore from "./datastores/decisions.ts";
 import VoteDatastore from "./datastores/votes.ts";
 import VoterDatastore from "./datastores/voters.ts";
 import CreateDecisionWorkflow from "./workflows/create_decision.ts";
-import VoteWorkflow from "./workflows/vote.ts";
 import SendRemindersWorkflow from "./workflows/send_reminders.ts";
 
 /**
@@ -18,7 +17,6 @@ export default Manifest({
   icon: "assets/icon.png",
   workflows: [
     CreateDecisionWorkflow,
-    VoteWorkflow,
     SendRemindersWorkflow,
   ],
   datastores: [
