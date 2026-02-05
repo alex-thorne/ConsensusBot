@@ -139,7 +139,8 @@ slack triggers create --trigger-def triggers/consensus_command.ts
 slack triggers create --trigger-def triggers/reminder_schedule.ts
 ```
 
-**Note**: Voting buttons work automatically through block action handlers - no separate trigger is needed.
+**Note**: Voting buttons work automatically through block action handlers - no
+separate trigger is needed.
 
 Verify all triggers are installed:
 
@@ -298,14 +299,17 @@ deno coverage coverage
 
 **Testing Documentation:**
 
-See [docs/CI_CD_TESTING.md](docs/CI_CD_TESTING.md) for comprehensive testing guide including:
+See [docs/CI_CD_TESTING.md](docs/CI_CD_TESTING.md) for comprehensive testing
+guide including:
+
 - How to write and run tests
 - Unit test examples
 - Integration test examples with mocks
 - Test coverage reporting
 - CI/CD pipeline details
 
-See [.github/workflows/README.md](.github/workflows/README.md) for workflow details.
+See [.github/workflows/README.md](.github/workflows/README.md) for workflow
+details.
 
 ## Troubleshooting
 
@@ -313,7 +317,8 @@ See [.github/workflows/README.md](.github/workflows/README.md) for workflow deta
 
 If clicking voting buttons shows a warning triangle and no response:
 
-**Note**: This issue was fixed. Voting buttons now use block action handlers directly and don't require a separate trigger.
+**Note**: This issue was fixed. Voting buttons now use block action handlers
+directly and don't require a separate trigger.
 
 ### Other Issues
 
@@ -468,7 +473,8 @@ Additional documentation:
 
 ### Voting buttons showing warning triangle (⚠️)
 
-This issue has been fixed. Voting buttons now use block action handlers directly. If you still see warning triangles:
+This issue has been fixed. Voting buttons now use block action handlers
+directly. If you still see warning triangles:
 
 1. Redeploy the app:
    ```bash

@@ -5,12 +5,18 @@ This guide helps you troubleshoot issues with ConsensusBot triggers.
 ## Symptom: Voting Buttons Show Warning Triangle (⚠️)
 
 ### Problem
-When clicking Yes/No/Abstain voting buttons, they spin and then show a warning triangle, and no logs appear.
+
+When clicking Yes/No/Abstain voting buttons, they spin and then show a warning
+triangle, and no logs appear.
 
 ### Root Cause (Fixed)
-This issue has been resolved. Voting buttons now use block action handlers directly within the `create_decision` function, which is the recommended approach for Slack's ROSI platform.
 
-The previous implementation used an event trigger with `slack#/events/block_actions`, which is not supported by Slack.
+This issue has been resolved. Voting buttons now use block action handlers
+directly within the `create_decision` function, which is the recommended
+approach for Slack's ROSI platform.
+
+The previous implementation used an event trigger with
+`slack#/events/block_actions`, which is not supported by Slack.
 
 ### Solution
 
@@ -26,13 +32,17 @@ Wait for deployment to complete successfully.
 
 2. **Create a new decision** to test the updated code:
 
-Use `/consensus` in Slack and create a new decision. The voting buttons on this new decision should work correctly.
+Use `/consensus` in Slack and create a new decision. The voting buttons on this
+new decision should work correctly.
 
 ### What Changed
 
-**Before**: The app used a separate event trigger (`vote_button_trigger.ts`) to catch button clicks and route them to a workflow.
+**Before**: The app used a separate event trigger (`vote_button_trigger.ts`) to
+catch button clicks and route them to a workflow.
 
-**After**: The `create_decision` function now includes a `.addBlockActionsHandler()` that handles button clicks directly. This is the correct pattern for interactive Block Kit elements in Slack's platform.
+**After**: The `create_decision` function now includes a
+`.addBlockActionsHandler()` that handles button clicks directly. This is the
+correct pattern for interactive Block Kit elements in Slack's platform.
 
 ### Verification
 
@@ -43,12 +53,14 @@ slack triggers list
 ```
 
 Expected triggers:
+
 - ✅ **Create Consensus Decision** (shortcut) - The /consensus command
 - ✅ **Send Voter Reminders** (scheduled) - Automated reminders
 
-**Note**: You will NOT see a "Record Vote on Decision" event trigger - this is correct! Voting is now handled by block action handlers, not triggers.
-```
+**Note**: You will NOT see a "Record Vote on Decision" event trigger - this is
+correct! Voting is now handled by block action handlers, not triggers.
 
+````
 ### Testing the Fix
 
 1. In Slack, type `/consensus` to create a new decision
@@ -94,36 +106,42 @@ This is the recommended approach per Slack's documentation for handling interact
 slack deploy
 # Wait for completion
 # Then create a NEW decision and test voting
-```
+````
 
 ### Issue: Different Error Messages
 
 **Error**: "Decision not found"
+
 - The decision ID might be corrupted
 - Try creating a new decision
 
 **Error**: "You are not listed as a required voter"
+
 - You weren't added as a required voter when the decision was created
 - Only listed voters can vote on decisions
 
 **Error**: "This decision is no longer active"
+
 - Decision has already been finalized
 - Check the decision status in the message
 
 ## Debugging Tips
 
 ### View Real-Time Logs
+
 ```bash
 slack activity --tail
 ```
 
 This shows:
+
 - When triggers fire
 - Function executions
 - Datastore operations
 - Errors and warnings
 
 ### Check Trigger Details
+
 ```bash
 slack triggers info <trigger_id>
 ```
@@ -133,11 +151,13 @@ Replace `<trigger_id>` with the ID from `slack triggers list`.
 ### Local vs Hosted App
 
 When running locally with `slack run`:
+
 - Triggers are created with "(local)" suffix
 - They only work while `slack run` is active
 - Stopping `slack run` breaks the triggers
 
 For production:
+
 - Deploy with `slack deploy`
 - Create triggers without `slack run` running
 - Triggers persist and work 24/7
@@ -168,12 +188,12 @@ Finalizes decision if complete
 
 ### Files Involved
 
-| File | Purpose |
-|------|---------|
+| File                           | Purpose                                          |
+| ------------------------------ | ------------------------------------------------ |
 | `functions/create_decision.ts` | Creates voting buttons AND handles button clicks |
-| `datastores/votes.ts` | Stores individual votes |
-| `datastores/decisions.ts` | Stores decision metadata |
-| `datastores/voters.ts` | Stores eligible voters |
+| `datastores/votes.ts`          | Stores individual votes                          |
+| `datastores/decisions.ts`      | Stores decision metadata                         |
+| `datastores/voters.ts`         | Stores eligible voters                           |
 
 ## Still Having Issues?
 
@@ -181,9 +201,9 @@ If voting buttons still don't work after following this guide:
 
 1. Verify the buttons in `create_decision.ts` use the correct action IDs:
    ```typescript
-   action_id: "vote_yes"    // ✅
-   action_id: "vote_no"     // ✅
-   action_id: "vote_abstain" // ✅
+   action_id: "vote_yes"; // ✅
+   action_id: "vote_no"; // ✅
+   action_id: "vote_abstain"; // ✅
    ```
 
 2. Check the Slack workspace requirements:
@@ -196,8 +216,8 @@ If voting buttons still don't work after following this guide:
    slack deploy --verbose
    ```
 
-4. Check that the block action handler is registered:
-   Look for `.addBlockActionsHandler()` at the end of `functions/create_decision.ts`
+4. Check that the block action handler is registered: Look for
+   `.addBlockActionsHandler()` at the end of `functions/create_decision.ts`
 
 ## Additional Resources
 
