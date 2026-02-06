@@ -26,12 +26,11 @@ Infrastructure (ROSI):
 
 ### Key Benefits
 
-✅ **Zero Infrastructure**: No servers, databases, or external services to
-manage ✅ **90% Cost Reduction**: $10-50/month vs $171-266/month for Azure-based
-architecture ✅ **85% Less Maintenance**: 1-2 hours/month vs 8-12 hours/month ✅
-**No Secret Rotation**: Slack handles all authentication automatically ✅
-**Auto-Scaling**: Platform handles load automatically ✅ **Built-in
-Compliance**: SOC 2 Type II, ISO 27001 certified
+- ✅ **Zero Infrastructure**: No servers, databases, or external services to
+manage
+- ✅ **No Secret Rotation**: Slack handles all authentication automatically
+- ✅ **Auto-Scaling**: Platform handles load automatically 
+- ✅ **Built-inCompliance**: SOC 2 Type II, ISO 27001 certified
 
 ## Features
 
@@ -404,55 +403,6 @@ Stores required voters:
 - `user_id`: Required voter
 - `required`: Whether vote is required
 - `created_at`: Timestamp
-
-## Migration from Azure
-
-This application has been migrated from an Azure-based architecture to Slack
-Native (ROSI). Key changes:
-
-### Removed
-
-- ❌ Azure App Service
-- ❌ Azure Functions (Timer triggers)
-- ❌ Azure Key Vault
-- ❌ Azure DevOps integration (automated ADR push)
-- ❌ Terraform infrastructure
-- ❌ Node.js/npm dependencies
-- ❌ Docker containers
-
-### Added
-
-- ✅ Deno runtime on Slack ROSI
-- ✅ Slack Datastores
-- ✅ Slack Workflows and Functions
-- ✅ Slack scheduled triggers
-- ✅ Manual ADR workflow (markdown posted to Slack)
-
-### Benefits
-
-- 90% cost reduction ($10-50/mo vs $171-266/mo)
-- 85% less maintenance (1-2 hrs/mo vs 8-12 hrs/mo)
-- Zero secret management overhead
-- Automatic scaling and reliability
-- Simplified deployment and operations
-
-## Cost Estimate
-
-### Low Volume (<50 decisions/month)
-
-- Workflow executions: $5-15/month
-- Datastore operations: $5-10/month
-- Scheduled triggers: $10-15/month
-- **Total: $20-40/month**
-
-### Medium Volume (50-200 decisions/month)
-
-- Workflow executions: $15-30/month
-- Datastore operations: $10-20/month
-- Scheduled triggers: $10-15/month
-- **Total: $35-65/month**
-
-_Note: Costs may be included in Enterprise Grid plans at no additional charge._
 
 ## Documentation
 
