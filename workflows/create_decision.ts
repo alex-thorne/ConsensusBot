@@ -32,80 +32,78 @@ const decisionForm = CreateDecisionWorkflow.addStep(
     title: "New Consensus Decision",
     interactivity: CreateDecisionWorkflow.inputs.interactivity,
     submit_label: "Create Decision",
-    fields: {
-      elements: [
-        {
-          name: "decision_name",
-          title: "Decision Name",
-          type: Schema.types.string,
-          description: "A clear title for this decision",
-          maxLength: 100,
+    elements: [
+      {
+        name: "decision_name",
+        title: "Decision Name",
+        type: Schema.types.string,
+        description: "A clear title for this decision",
+        maxLength: 100,
+      },
+      {
+        name: "proposal",
+        title: "The Proposal",
+        type: Schema.types.string,
+        description: "Details of the target outcome and strategic alignment",
+        long: true,
+        maxLength: 2000,
+      },
+      {
+        name: "required_voters",
+        title: "Required Voters",
+        type: Schema.types.array,
+        items: {
+          type: Schema.slack.types.user_id,
         },
-        {
-          name: "proposal",
-          title: "The Proposal",
-          type: Schema.types.string,
-          description: "Details of the target outcome and strategic alignment",
-          long: true,
-          maxLength: 2000,
+        description: "Select team members whose votes are required",
+      },
+      {
+        name: "required_usergroups",
+        title: "Required User Groups (Optional)",
+        type: Schema.types.array,
+        items: {
+          type: Schema.slack.types.usergroup_id,
         },
-        {
-          name: "required_voters",
-          title: "Required Voters",
-          type: Schema.types.array,
-          items: {
-            type: Schema.slack.types.user_id,
+        description:
+          "Select user groups - all members will be added as voters",
+      },
+      {
+        name: "success_criteria",
+        title: "Success Criteria",
+        type: Schema.types.string,
+        description: "Threshold for consensus",
+        enum: ["simple_majority", "super_majority", "unanimous"],
+        choices: [
+          {
+            value: "simple_majority",
+            title: "Simple Majority (>50%)",
+            description: "More than half of votes must be yes",
           },
-          description: "Select team members whose votes are required",
-        },
-        {
-          name: "required_usergroups",
-          title: "Required User Groups (Optional)",
-          type: Schema.types.array,
-          items: {
-            type: Schema.slack.types.usergroup_id,
+          {
+            value: "super_majority",
+            title: "Supermajority (≥66%)",
+            description: "At least 66% of required voters must vote yes",
           },
-          description:
-            "Select user groups - all members will be added as voters",
-        },
-        {
-          name: "success_criteria",
-          title: "Success Criteria",
-          type: Schema.types.string,
-          description: "Threshold for consensus",
-          enum: ["simple_majority", "super_majority", "unanimous"],
-          choices: [
-            {
-              value: "simple_majority",
-              title: "Simple Majority (>50%)",
-              description: "More than half of votes must be yes",
-            },
-            {
-              value: "super_majority",
-              title: "Supermajority (≥66%)",
-              description: "At least 66% of required voters must vote yes",
-            },
-            {
-              value: "unanimous",
-              title: "Unanimity (100%)",
-              description: "All votes must be yes (abstentions allowed)",
-            },
-          ],
-        },
-        {
-          name: "deadline",
-          title: "Deadline",
-          type: Schema.types.string,
-          description: "Date by which votes must be cast (YYYY-MM-DD)",
-        },
-      ],
-      required: [
-        "decision_name",
-        "proposal",
-        "required_voters",
-        "success_criteria",
-      ],
-    },
+          {
+            value: "unanimous",
+            title: "Unanimity (100%)",
+            description: "All votes must be yes (abstentions allowed)",
+          },
+        ],
+      },
+      {
+        name: "deadline",
+        title: "Deadline",
+        type: Schema.types.string,
+        description: "Date by which votes must be cast (YYYY-MM-DD)",
+      },
+    ],
+    required: [
+      "decision_name",
+      "proposal",
+      "required_voters",
+      "success_criteria",
+    ],
   },
 );
 
