@@ -300,7 +300,9 @@ export default SlackFunction(
 
     const decision = getDecision.item as DecisionRecord;
 
-    console.log(`Decision validated: decision_id=${decision_id}, status=${decision.status}`);
+    console.log(
+      `Decision validated: decision_id=${decision_id}, status=${decision.status}`,
+    );
 
     // Check if decision is still active
     if (decision.status !== "active") {
@@ -351,7 +353,8 @@ export default SlackFunction(
       await client.chat.postEphemeral({
         channel: channel_id,
         user: user_id,
-        text: `❌ Failed to record your vote: ${putVote.error}. Please try again.`,
+        text:
+          `❌ Failed to record your vote: ${putVote.error}. Please try again.`,
       });
       return;
     }
@@ -432,7 +435,8 @@ export default SlackFunction(
               },
               {
                 type: "mrkdwn",
-                text: `*Status:*\n🟢 Active\n*Votes:* ${voteCount}/${requiredCount}${votedText}`,
+                text:
+                  `*Status:*\n🟢 Active\n*Votes:* ${voteCount}/${requiredCount}${votedText}`,
               },
             ],
           },
@@ -482,7 +486,8 @@ export default SlackFunction(
             elements: [
               {
                 type: "mrkdwn",
-                text: `Created by <@${decision.creator_id}> | Vote by ${decision.deadline}`,
+                text:
+                  `Created by <@${decision.creator_id}> | Vote by ${decision.deadline}`,
               },
             ],
           },
@@ -530,7 +535,14 @@ export default SlackFunction(
     console.log(`Should finalize decision: ${shouldFinalize}`);
 
     if (shouldFinalize) {
-      await finalizeDecision(client, decision, channel_id, message_ts, complete, decision_id);
+      await finalizeDecision(
+        client,
+        decision,
+        channel_id,
+        message_ts,
+        complete,
+        decision_id,
+      );
     }
   },
 );
@@ -578,7 +590,9 @@ async function finalizeDecision(
   decision: DecisionRecord,
   channel_id: string,
   message_ts: string,
-  complete: (result: { outputs: { decision_id: string; message_ts: string } }) => void,
+  complete: (
+    result: { outputs: { decision_id: string; message_ts: string } },
+  ) => void,
   decision_id: string,
 ) {
   // Get all votes

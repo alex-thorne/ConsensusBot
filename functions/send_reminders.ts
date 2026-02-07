@@ -61,7 +61,7 @@ export default SlackFunction(
       if (isDeadlinePassed(decision.deadline as string)) {
         console.log(
           `Skipping decision ${decision.id} - deadline has passed. ` +
-          `Decision will be finalized when a vote button is clicked.`,
+            `Decision will be finalized when a vote button is clicked.`,
         );
         continue;
       }

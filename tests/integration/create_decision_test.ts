@@ -77,13 +77,22 @@ Deno.test("create_decision integration - should create decision and post message
   // Verify datastore.put was called
   const putCalls = mockClient.getCallsFor("apps.datastore.put");
   assertEquals(putCalls.length, 1);
-  assertEquals((putCalls[0].params as DatastorePutParams).datastore, "decisions");
-  assertEquals((putCalls[0].params as DatastorePutParams).item.name, inputs.decision_name);
+  assertEquals(
+    (putCalls[0].params as DatastorePutParams).datastore,
+    "decisions",
+  );
+  assertEquals(
+    (putCalls[0].params as DatastorePutParams).item.name,
+    inputs.decision_name,
+  );
 
   // Verify chat.postMessage was called
   const postMessageCalls = mockClient.getCallsFor("chat.postMessage");
   assertEquals(postMessageCalls.length, 1);
-  assertEquals((postMessageCalls[0].params as ChatPostMessageParams).channel, inputs.channel_id);
+  assertEquals(
+    (postMessageCalls[0].params as ChatPostMessageParams).channel,
+    inputs.channel_id,
+  );
 
   // Verify message was posted successfully
   assertEquals(messageResponse.ok, true);
@@ -103,7 +112,10 @@ Deno.test("create_decision integration - should fetch channel members", async ()
   // Verify conversations.members was called
   const membersCalls = mockClient.getCallsFor("conversations.members");
   assertEquals(membersCalls.length, 1);
-  assertEquals((membersCalls[0].params as ConversationsMembersParams).channel, channelId);
+  assertEquals(
+    (membersCalls[0].params as ConversationsMembersParams).channel,
+    channelId,
+  );
 
   // Verify members were returned
   assertEquals(membersResponse.ok, true);
@@ -170,7 +182,10 @@ Deno.test("create_decision integration - should support different success criter
 
     const putCalls = mockClient.getCallsFor("apps.datastore.put");
     assertEquals(putCalls.length, 1);
-    assertEquals((putCalls[0].params as DatastorePutParams).item.success_criteria, criteria);
+    assertEquals(
+      (putCalls[0].params as DatastorePutParams).item.success_criteria,
+      criteria,
+    );
   }
 });
 
@@ -199,5 +214,8 @@ Deno.test("create_decision integration - should handle custom deadline", async (
 
   const putCalls = mockClient.getCallsFor("apps.datastore.put");
   assertEquals(putCalls.length, 1);
-  assertEquals((putCalls[0].params as DatastorePutParams).item.deadline, customDeadline);
+  assertEquals(
+    (putCalls[0].params as DatastorePutParams).item.deadline,
+    customDeadline,
+  );
 });

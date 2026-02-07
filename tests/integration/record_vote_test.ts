@@ -78,8 +78,14 @@ Deno.test("record_vote integration - should record a yes vote", async () => {
   const putCalls = mockClient.getCallsFor("apps.datastore.put");
   assertEquals(putCalls.length, 1);
   assertEquals((putCalls[0].params as DatastorePutParams).datastore, "votes");
-  assertEquals((putCalls[0].params as DatastorePutParams).item.vote_type, "yes");
-  assertEquals((putCalls[0].params as DatastorePutParams).item.user_id, "U234567");
+  assertEquals(
+    (putCalls[0].params as DatastorePutParams).item.vote_type,
+    "yes",
+  );
+  assertEquals(
+    (putCalls[0].params as DatastorePutParams).item.user_id,
+    "U234567",
+  );
 });
 
 Deno.test("record_vote integration - should record a no vote", async () => {
@@ -121,7 +127,10 @@ Deno.test("record_vote integration - should record an abstain vote", async () =>
 
   const putCalls = mockClient.getCallsFor("apps.datastore.put");
   assertEquals(putCalls.length, 1);
-  assertEquals((putCalls[0].params as DatastorePutParams).item.vote_type, "abstain");
+  assertEquals(
+    (putCalls[0].params as DatastorePutParams).item.vote_type,
+    "abstain",
+  );
 });
 
 Deno.test("record_vote integration - should update message after vote", async () => {
@@ -183,7 +192,10 @@ Deno.test("record_vote integration - should handle vote updates", async () => {
   // Verify update was called
   const updateCalls = mockClient.getCallsFor("apps.datastore.update");
   assertEquals(updateCalls.length, 1);
-  assertEquals((updateCalls[0].params as DatastoreUpdateParams).item.vote_type, "no");
+  assertEquals(
+    (updateCalls[0].params as DatastoreUpdateParams).item.vote_type,
+    "no",
+  );
 });
 
 Deno.test("record_vote integration - should query existing votes for decision", async () => {
@@ -220,7 +232,10 @@ Deno.test("record_vote integration - should query existing votes for decision", 
   // Verify query was executed
   const queryCalls = mockClient.getCallsFor("apps.datastore.query");
   assertEquals(queryCalls.length, 1);
-  assertEquals((queryCalls[0].params as DatastoreQueryParams).datastore, "votes");
+  assertEquals(
+    (queryCalls[0].params as DatastoreQueryParams).datastore,
+    "votes",
+  );
 
   // Verify results
   assertEquals(response.ok, true);
@@ -243,8 +258,14 @@ Deno.test("record_vote integration - should post ephemeral confirmation", async 
   // Verify ephemeral message was posted
   const ephemeralCalls = mockClient.getCallsFor("chat.postEphemeral");
   assertEquals(ephemeralCalls.length, 1);
-  assertEquals((ephemeralCalls[0].params as ChatPostEphemeralParams).channel, channelId);
-  assertEquals((ephemeralCalls[0].params as ChatPostEphemeralParams).user, userId);
+  assertEquals(
+    (ephemeralCalls[0].params as ChatPostEphemeralParams).channel,
+    channelId,
+  );
+  assertEquals(
+    (ephemeralCalls[0].params as ChatPostEphemeralParams).user,
+    userId,
+  );
 });
 
 Deno.test("record_vote integration - vote type normalization", () => {

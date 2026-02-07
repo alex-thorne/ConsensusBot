@@ -1,12 +1,19 @@
 # Vote Button Data Flow Documentation
 
-> **⚠️ OUTDATED**: This document describes the old implementation using event triggers and workflows. As of the latest update, voting buttons use block action handlers (`.addBlockActionsHandler()`) directly in the `create_decision` function. See [TRIGGER_TROUBLESHOOTING.md](TRIGGER_TROUBLESHOOTING.md) for current implementation.
+> **⚠️ OUTDATED**: This document describes the old implementation using event
+> triggers and workflows. As of the latest update, voting buttons use block
+> action handlers (`.addBlockActionsHandler()`) directly in the
+> `create_decision` function. See
+> [TRIGGER_TROUBLESHOOTING.md](TRIGGER_TROUBLESHOOTING.md) for current
+> implementation.
 
-This document explains how data **used to flow** from a button click through the trigger, workflow, and function to record a vote (historical reference only).
+This document explains how data **used to flow** from a button click through the
+trigger, workflow, and function to record a vote (historical reference only).
 
 ## Overview (Historical)
 
-When a user clicks a voting button (Yes/No/Abstain), the following sequence **now** occurs:
+When a user clicks a voting button (Yes/No/Abstain), the following sequence
+**now** occurs:
 
 ```
 User clicks button
@@ -79,14 +86,14 @@ When clicked, Slack generates a `block_actions` event with this structure:
 
 The `vote_button_trigger.ts` extracts data using template variables:
 
-| Trigger Input | Data Path | Example Value |
-|--------------|-----------|---------------|
-| `decision_id` | `{{data.actions.0.value}}` | `"1234567890.123456"` |
-| `vote_type` | `{{data.actions.0.action_id}}` | `"vote_yes"` |
-| `user_id` | `{{data.user.id}}` | `"U123456"` |
-| `channel_id` | `{{data.container.channel_id}}` | `"C123456"` |
-| `message_ts` | `{{data.container.message_ts}}` | `"1234567890.123456"` |
-| `interactivity` | `{{data.interactivity}}` | `{ ... }` |
+| Trigger Input   | Data Path                       | Example Value         |
+| --------------- | ------------------------------- | --------------------- |
+| `decision_id`   | `{{data.actions.0.value}}`      | `"1234567890.123456"` |
+| `vote_type`     | `{{data.actions.0.action_id}}`  | `"vote_yes"`          |
+| `user_id`       | `{{data.user.id}}`              | `"U123456"`           |
+| `channel_id`    | `{{data.container.channel_id}}` | `"C123456"`           |
+| `message_ts`    | `{{data.container.message_ts}}` | `"1234567890.123456"` |
+| `interactivity` | `{{data.interactivity}}`        | `{ ... }`             |
 
 ### 4. VoteWorkflow Receives
 
@@ -123,7 +130,8 @@ The function (`functions/record_vote.ts`) receives the same inputs and:
    - Fields: `decision_id`, `user_id`, `vote_type` (normalized), `voted_at`
 
 5. **Sends confirmation**:
-   - Ephemeral message: "✅ Your vote (YES) has been recorded for 'Decision Name'"
+   - Ephemeral message: "✅ Your vote (YES) has been recorded for 'Decision
+     Name'"
 
 6. **Checks finalization**:
    - If all votes are in OR deadline passed, finalizes decision
@@ -139,16 +147,17 @@ const vote_type = inputs.vote_type.replace(/^vote_/, "");
 ```
 
 | action_id (input) | vote_type (stored) |
-|-------------------|-------------------|
-| `vote_yes` | `yes` |
-| `vote_no` | `no` |
-| `vote_abstain` | `abstain` |
+| ----------------- | ------------------ |
+| `vote_yes`        | `yes`              |
+| `vote_no`         | `no`               |
+| `vote_abstain`    | `abstain`          |
 
 This normalization ensures the datastore contains clean, standardized values.
 
 ### Decision ID
 
-The decision ID is the message timestamp from when the voting message was posted:
+The decision ID is the message timestamp from when the voting message was
+posted:
 
 - Created in `create_decision.ts` as `message.ts`
 - Used as primary key in DecisionDatastore
@@ -175,18 +184,21 @@ For the trigger to work correctly:
 
 ### Wrong Data Path
 
-❌ **Incorrect**: `{{data.action.value}}` (missing `s` and `[0]`)  
+❌ **Incorrect**: `{{data.action.value}}` (missing `s` and `[0]`)\
 ✅ **Correct**: `{{data.actions.0.value}}`
 
-Slack's block_actions event has an `actions` array (plural). The first action is at index 0.
+Slack's block_actions event has an `actions` array (plural). The first action is
+at index 0.
 
 ### Missing Action ID
 
-If a button doesn't have an `action_id` that matches the trigger's `action_ids` filter, the trigger won't catch the event.
+If a button doesn't have an `action_id` that matches the trigger's `action_ids`
+filter, the trigger won't catch the event.
 
 ### Mismatched Decision ID
 
-If the button `value` doesn't contain the correct decision ID, the vote will fail because the decision won't be found in the datastore.
+If the button `value` doesn't contain the correct decision ID, the vote will
+fail because the decision won't be found in the datastore.
 
 ## Verification
 
@@ -197,6 +209,7 @@ Run the validation script to verify configuration:
 ```
 
 This checks:
+
 - ✅ Trigger exists and has correct type
 - ✅ Event type is `slack#/events/block_actions`
 - ✅ Action IDs match button definitions

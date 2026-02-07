@@ -16,7 +16,7 @@ export interface MockCall {
  */
 export class MockSlackClient implements SlackClient {
   calls: MockCall[] = [];
-  
+
   // Mock datastore responses
   datastoreItems: Map<string, Record<string, unknown>> = new Map();
   datastoreQueryResults: Record<string, unknown>[] = [];
@@ -50,8 +50,12 @@ export class MockSlackClient implements SlackClient {
       }) => {
         this.calls.push({ method: "apps.datastore.update", params });
         if (params.item.id) {
-          const existing = this.datastoreItems.get(params.item.id as string) || {};
-          this.datastoreItems.set(params.item.id as string, { ...existing, ...params.item });
+          const existing = this.datastoreItems.get(params.item.id as string) ||
+            {};
+          this.datastoreItems.set(params.item.id as string, {
+            ...existing,
+            ...params.item,
+          });
         }
         return Promise.resolve({ ok: true });
       },
