@@ -67,7 +67,8 @@ tests/
 
 Unit tests validate individual utility functions without external dependencies:
 
-- **decision_logic_test.ts** - Vote counting, outcome calculation, deadlock detection
+- **decision_logic_test.ts** - Vote counting, outcome calculation, deadlock
+  detection
 - **date_utils_test.ts** - Deadline calculations, date formatting
 - **adr_generator_test.ts** - ADR markdown generation
 - **types_test.ts** - Type definitions and validations
@@ -99,13 +100,13 @@ import { createMockSlackClient } from "../mocks/slack_client.ts";
 
 Deno.test("should post message to Slack", async () => {
   const mockClient = createMockSlackClient();
-  
+
   // Perform actions with mock client
   await mockClient.chat.postMessage({
     channel: "C123456",
     text: "Test message",
   });
-  
+
   // Verify interactions
   const calls = mockClient.getCallsFor("chat.postMessage");
   assertEquals(calls.length, 1);
@@ -154,7 +155,8 @@ The pipeline runs automatically on:
 
 ## Test Coverage
 
-Test coverage is automatically generated during CI runs and uploaded as artifacts.
+Test coverage is automatically generated during CI runs and uploaded as
+artifacts.
 
 ### Viewing Coverage Locally
 
@@ -184,7 +186,8 @@ Coverage reports are uploaded as artifacts in the CI pipeline:
 ### Writing Tests
 
 1. **Test one thing per test** - Each test should validate a single behavior
-2. **Use descriptive names** - Test names should clearly describe what's being tested
+2. **Use descriptive names** - Test names should clearly describe what's being
+   tested
 3. **Follow AAA pattern** - Arrange, Act, Assert
 4. **Keep tests independent** - Tests should not depend on each other
 5. **Use mocks appropriately** - Mock external dependencies, not internal logic

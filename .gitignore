@@ -41,3 +41,4 @@ terraform/.terraform.lock.hcl
 # Old Docker artifacts (deprecated)
 dist/
 build/
+lint_output.txt

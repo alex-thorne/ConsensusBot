@@ -270,7 +270,7 @@ export default SlackFunction(
   },
 ).addBlockActionsHandler(
   ["vote_yes", "vote_no", "vote_abstain"],
-  async ({ action, body, client, complete }) => {
+  async ({ action, body, client }) => {
     // Extract data from the button click
     const decision_id = action.value;
     const vote_type = action.action_id.replace(/^vote_/, "");
@@ -300,7 +300,9 @@ export default SlackFunction(
 
     const decision = getDecision.item as DecisionRecord;
 
-    console.log(`Decision validated: decision_id=${decision_id}, status=${decision.status}`);
+    console.log(
+      `Decision validated: decision_id=${decision_id}, status=${decision.status}`,
+    );
 
     // Check if decision is still active
     if (decision.status !== "active") {
@@ -351,7 +353,8 @@ export default SlackFunction(
       await client.chat.postEphemeral({
         channel: channel_id,
         user: user_id,
-        text: `❌ Failed to record your vote: ${putVote.error}. Please try again.`,
+        text:
+          `❌ Failed to record your vote: ${putVote.error}. Please try again.`,
       });
       return;
     }
@@ -432,7 +435,8 @@ export default SlackFunction(
               },
               {
                 type: "mrkdwn",
-                text: `*Status:*\n🟢 Active\n*Votes:* ${voteCount}/${requiredCount}${votedText}`,
+                text:
+                  `*Status:*\n🟢 Active\n*Votes:* ${voteCount}/${requiredCount}${votedText}`,
               },
             ],
           },
@@ -482,7 +486,8 @@ export default SlackFunction(
             elements: [
               {
                 type: "mrkdwn",
-                text: `Created by <@${decision.creator_id}> | Vote by ${decision.deadline}`,
+                text:
+                  `Created by <@${decision.creator_id}> | Vote by ${decision.deadline}`,
               },
             ],
           },
@@ -530,7 +535,13 @@ export default SlackFunction(
     console.log(`Should finalize decision: ${shouldFinalize}`);
 
     if (shouldFinalize) {
-      await finalizeDecision(client, decision, channel_id, message_ts, complete, decision_id);
+      await finalizeDecision(
+        client,
+        decision,
+        channel_id,
+        message_ts,
+        decision_id,
+      );
     }
   },
 );
@@ -578,8 +589,7 @@ async function finalizeDecision(
   decision: DecisionRecord,
   channel_id: string,
   message_ts: string,
-  complete: (result: { outputs: { decision_id: string; message_ts: string } }) => void,
-  decision_id: string,
+  _decision_id: string,
 ) {
   // Get all votes
   const votesResponse = await client.apps.datastore.query({
@@ -709,11 +719,6 @@ async function finalizeDecision(
     text: "ADR Generated - See thread for details",
   });
 
-  // Complete the workflow now that the decision is finalized
-  complete({
-    outputs: {
-      decision_id: decision_id,
-      message_ts: message_ts,
-    },
-  });
+  // Note: The workflow will remain running with completed: false
+  // This is expected behavior for functions with block action handlers
 }
