@@ -122,6 +122,23 @@ export class MockSlackClient implements SlackClient {
     },
   };
 
+  pins = {
+    add: (params: {
+      channel: string;
+      timestamp: string;
+    }) => {
+      this.calls.push({ method: "pins.add", params });
+      return Promise.resolve({ ok: true });
+    },
+    remove: (params: {
+      channel: string;
+      timestamp: string;
+    }) => {
+      this.calls.push({ method: "pins.remove", params });
+      return Promise.resolve({ ok: true });
+    },
+  };
+
   /**
    * Get all calls made to a specific method
    */
