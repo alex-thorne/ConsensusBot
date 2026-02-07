@@ -241,19 +241,21 @@ Approved!`;
   // First block should be a section with header text
   assertEquals(blocks[0].type, "section");
   assertStringIncludes(
-    blocks[0].text?.text || "",
+    blocks[0].text?.text ?? "",
     "Architecture Decision Record Generated",
   );
 
   // Second block should contain the markdown in a code block
   assertEquals(blocks[1].type, "section");
-  assertStringIncludes(blocks[1].text?.text || "", "```");
-  assertStringIncludes(blocks[1].text?.text || "", adrMarkdown);
+  assertStringIncludes(blocks[1].text?.text ?? "", "```");
+  assertStringIncludes(blocks[1].text?.text ?? "", adrMarkdown);
 
   // Third block should be context with archival instructions
   assertEquals(blocks[2].type, "context");
   const elementText = blocks[2].elements?.[0]?.text;
-  const safeText = typeof elementText === "string" ? elementText : elementText?.text || "";
+  const safeText = typeof elementText === "string"
+    ? elementText
+    : elementText?.text || "";
   assertStringIncludes(
     safeText,
     "To archive this ADR",
