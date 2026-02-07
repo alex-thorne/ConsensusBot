@@ -67,6 +67,7 @@ const decisionForm = CreateDecisionWorkflow.addStep(
           },
           description:
             "Select user groups - all members will be added as voters",
+          default: [],
         },
         {
           name: "success_criteria",
@@ -95,8 +96,8 @@ const decisionForm = CreateDecisionWorkflow.addStep(
         {
           name: "deadline",
           title: "Deadline",
-          type: Schema.types.string,
-          description: "Date by which votes must be cast (YYYY-MM-DD)",
+          type: Schema.slack.types.date,
+          description: "Date by which votes must be cast",
         },
       ],
       required: [

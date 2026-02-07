@@ -49,7 +49,7 @@ export const CreateDecisionFunction = DefineFunction({
         description: "Success criteria for the decision",
       },
       deadline: {
-        type: Schema.types.string,
+        type: Schema.slack.types.date,
         description: "Deadline for voting",
       },
       channel_id: {
