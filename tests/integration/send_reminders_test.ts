@@ -7,6 +7,25 @@
 import { assertEquals } from "@std/assert";
 import { createMockSlackClient } from "../mocks/slack_client.ts";
 
+// Type definitions for mock client parameters
+interface DatastoreQueryParams {
+  datastore: string;
+  expression?: string;
+  expression_attributes?: Record<string, string>;
+  expression_values?: Record<string, unknown>;
+}
+
+interface ChatPostMessageParams {
+  channel: string;
+  text?: string;
+  blocks?: unknown[];
+  thread_ts?: string;
+}
+
+interface ConversationsMembersParams {
+  channel: string;
+}
+
 Deno.test("send_reminders integration - should query active decisions", async () => {
   const mockClient = createMockSlackClient();
 
@@ -41,7 +60,7 @@ Deno.test("send_reminders integration - should query active decisions", async ()
   // Verify query was executed
   const queryCalls = mockClient.getCallsFor("apps.datastore.query");
   assertEquals(queryCalls.length, 1);
-  assertEquals((queryCalls[0].params as any).datastore, "decisions");
+  assertEquals((queryCalls[0].params as DatastoreQueryParams).datastore, "decisions");
 
   // Verify active decisions were returned
   assertEquals(response.ok, true);
@@ -73,8 +92,8 @@ Deno.test("send_reminders integration - should post reminder message to thread",
   // Verify message was posted
   const postCalls = mockClient.getCallsFor("chat.postMessage");
   assertEquals(postCalls.length, 1);
-  assertEquals((postCalls[0].params as any).channel, channelId);
-  assertEquals((postCalls[0].params as any).thread_ts, threadTs);
+  assertEquals((postCalls[0].params as ChatPostMessageParams).channel, channelId);
+  assertEquals((postCalls[0].params as ChatPostMessageParams).thread_ts, threadTs);
 });
 
 Deno.test("send_reminders integration - should query votes for decision", async () => {
@@ -128,15 +147,15 @@ Deno.test("send_reminders integration - should get channel members", async () =>
   // Verify members API was called
   const membersCalls = mockClient.getCallsFor("conversations.members");
   assertEquals(membersCalls.length, 1);
-  assertEquals((membersCalls[0].params as any).channel, channelId);
+  assertEquals((membersCalls[0].params as ConversationsMembersParams).channel, channelId);
 
   // Verify members were returned
   assertEquals(response.ok, true);
   assertEquals(response.members!.length, 3);
 });
 
-Deno.test("send_reminders integration - should identify users who haven't voted", async () => {
-  const mockClient = createMockSlackClient();
+Deno.test("send_reminders integration - should identify users who haven't voted", () => {
+  const _mockClient = createMockSlackClient();
 
   // Channel members
   const allMembers = ["U123456", "U234567", "U345678", "U456789"];
@@ -225,7 +244,7 @@ Deno.test("send_reminders integration - should handle multiple decisions", async
   assertEquals(postCalls.length, 3);
 
   // Verify each reminder went to correct channel
-  assertEquals((postCalls[0].params as any).channel, "C123456");
-  assertEquals((postCalls[1].params as any).channel, "C234567");
-  assertEquals((postCalls[2].params as any).channel, "C345678");
+  assertEquals((postCalls[0].params as ChatPostMessageParams).channel, "C123456");
+  assertEquals((postCalls[1].params as ChatPostMessageParams).channel, "C234567");
+  assertEquals((postCalls[2].params as ChatPostMessageParams).channel, "C345678");
 });

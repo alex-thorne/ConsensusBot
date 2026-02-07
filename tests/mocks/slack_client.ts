@@ -23,28 +23,28 @@ export class MockSlackClient implements SlackClient {
 
   apps = {
     datastore: {
-      get: async (params: { datastore: string; id: string }) => {
+      get: (params: { datastore: string; id: string }) => {
         this.calls.push({ method: "apps.datastore.get", params });
         const item = this.datastoreItems.get(params.id);
-        return { ok: true, item: item || {} };
+        return Promise.resolve({ ok: true, item: item || {} });
       },
-      put: async (params: { datastore: string; item: Record<string, unknown> }) => {
+      put: (params: { datastore: string; item: Record<string, unknown> }) => {
         this.calls.push({ method: "apps.datastore.put", params });
         if (params.item.id) {
           this.datastoreItems.set(params.item.id as string, params.item);
         }
-        return { ok: true };
+        return Promise.resolve({ ok: true });
       },
-      query: async (params: {
+      query: (params: {
         datastore: string;
         expression?: string;
         expression_attributes?: Record<string, string>;
         expression_values?: Record<string, unknown>;
       }) => {
         this.calls.push({ method: "apps.datastore.query", params });
-        return { ok: true, items: this.datastoreQueryResults };
+        return Promise.resolve({ ok: true, items: this.datastoreQueryResults });
       },
-      update: async (params: {
+      update: (params: {
         datastore: string;
         item: Record<string, unknown>;
       }) => {
@@ -53,68 +53,68 @@ export class MockSlackClient implements SlackClient {
           const existing = this.datastoreItems.get(params.item.id as string) || {};
           this.datastoreItems.set(params.item.id as string, { ...existing, ...params.item });
         }
-        return { ok: true };
+        return Promise.resolve({ ok: true });
       },
     },
   };
 
   chat = {
-    postMessage: async (params: {
+    postMessage: (params: {
       channel: string;
       text: string;
       blocks?: SlackBlock[];
       thread_ts?: string;
     }) => {
       this.calls.push({ method: "chat.postMessage", params });
-      return {
+      return Promise.resolve({
         ok: true,
         ts: "1234567890.123456",
         message: {
           blocks: params.blocks,
         },
-      };
+      });
     },
-    postEphemeral: async (params: {
+    postEphemeral: (params: {
       channel: string;
       user: string;
       text: string;
       blocks?: SlackBlock[];
     }) => {
       this.calls.push({ method: "chat.postEphemeral", params });
-      return { ok: true };
+      return Promise.resolve({ ok: true });
     },
-    update: async (params: {
+    update: (params: {
       channel: string;
       ts: string;
       text?: string;
       blocks?: SlackBlock[];
     }) => {
       this.calls.push({ method: "chat.update", params });
-      return { ok: true };
+      return Promise.resolve({ ok: true });
     },
   };
 
   conversations = {
-    members: async (params: { channel: string }) => {
+    members: (params: { channel: string }) => {
       this.calls.push({ method: "conversations.members", params });
-      return {
+      return Promise.resolve({
         ok: true,
         members: ["U123456", "U234567", "U345678"],
-      };
+      });
     },
   };
 
   users = {
-    info: async (params: { user: string }) => {
+    info: (params: { user: string }) => {
       this.calls.push({ method: "users.info", params });
-      return {
+      return Promise.resolve({
         ok: true,
         user: {
           id: params.user,
           name: `user_${params.user}`,
           real_name: `Test User ${params.user}`,
         },
-      };
+      });
     },
   };
 
