@@ -7,15 +7,6 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { createMockSlackClient } from "../mocks/slack_client.ts";
 
-interface DatastorePutParams {
-  datastore: string;
-  item: Record<string, unknown>;
-}
-
-interface UsergroupUsersListParams {
-  usergroup: string;
-}
-
 Deno.test("create_decision with usergroups - should expand user groups and store all voters", async () => {
   const mockClient = createMockSlackClient();
 

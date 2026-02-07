@@ -98,7 +98,6 @@ Deno.test("usergroup expansion - should handle empty user group", async () => {
   // Verify response
   assertEquals(response.ok, true);
   assertEquals(response.users, []);
-  assertEquals(response.users!.length, 0);
 });
 
 Deno.test("usergroup expansion - should handle non-existent user group gracefully", async () => {

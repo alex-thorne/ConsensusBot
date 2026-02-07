@@ -93,7 +93,6 @@ export default SlackFunction(
 
     // Expand user groups to individual users
     const allVoters = new Set<string>();
-    const userGroupInfo: Map<string, string[]> = new Map(); // Track which users came from which groups
 
     // Add individual voters first
     if (inputs.required_voters && Array.isArray(inputs.required_voters)) {
@@ -127,7 +126,6 @@ export default SlackFunction(
             Array.isArray(usergroupResponse.users)
           ) {
             const groupMembers = usergroupResponse.users;
-            userGroupInfo.set(usergroup_id, groupMembers);
 
             // Add all members to the set (automatic deduplication)
             for (const member of groupMembers) {
