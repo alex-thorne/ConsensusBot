@@ -59,6 +59,16 @@ const decisionForm = CreateDecisionWorkflow.addStep(
           description: "Select team members whose votes are required",
         },
         {
+          name: "required_usergroups",
+          title: "Required User Groups (Optional)",
+          type: Schema.types.array,
+          items: {
+            type: Schema.slack.types.usergroup_id,
+          },
+          description:
+            "Select user groups - all members will be added as voters",
+        },
+        {
           name: "success_criteria",
           title: "Success Criteria",
           type: Schema.types.string,
@@ -104,6 +114,7 @@ CreateDecisionWorkflow.addStep(CreateDecisionFunction, {
   decision_name: decisionForm.outputs.fields.decision_name,
   proposal: decisionForm.outputs.fields.proposal,
   required_voters: decisionForm.outputs.fields.required_voters,
+  required_usergroups: decisionForm.outputs.fields.required_usergroups,
   success_criteria: decisionForm.outputs.fields.success_criteria,
   deadline: decisionForm.outputs.fields.deadline,
   channel_id: CreateDecisionWorkflow.inputs.channel_id,

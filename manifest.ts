@@ -33,6 +33,7 @@ export default Manifest({
     "datastore:write",
     "pins:write",
     "users:read",
+    "usergroups:read",
     "im:write",
   ],
 });
