@@ -252,8 +252,10 @@ Approved!`;
 
   // Third block should be context with archival instructions
   assertEquals(blocks[2].type, "context");
+  const elementText = blocks[2].elements?.[0]?.text;
+  const safeText = typeof elementText === "string" ? elementText : elementText?.text || "";
   assertStringIncludes(
-    blocks[2].elements?.[0]?.text || "",
+    safeText,
     "To archive this ADR",
   );
 });
