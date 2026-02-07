@@ -139,12 +139,12 @@ Based on PR #10 analysis and current infrastructure:
 | -------------------------- | ----------------------------------------- | ----------------------------------- | ------- |
 | **Authentication**         | Manual Service Principal + PAT management | Automatic OAuth token rotation      | ROSI ✅ |
 | **Secret Storage**         | Azure Key Vault (separate service)        | Slack-managed environment variables | ROSI ✅ |
-| **Network Security**       | NSGs, CORS, IP allowlists                 | Platform-level isolation            | Tie ⚖️  |
+| **Network Security**       | NSGs, CORS, IP allowlists                 | Platform-level isolation            | Tie ⚖️   |
 | **Data Encryption**        | TLS 1.2, Storage encryption               | TLS 1.3, Native encryption          | ROSI ✅ |
 | **Compliance**             | SOC 2, ISO 27001 (DIY audit)              | SOC 2, ISO 27001 (Slack-certified)  | ROSI ✅ |
 | **Vulnerability Patching** | Manual - monthly updates                  | Automatic - platform managed        | ROSI ✅ |
-| **Access Control**         | RBAC + IAM + Key Vault policies           | Workspace-level permissions         | Tie ⚖️  |
-| **Audit Logging**          | Application Insights queries              | Slack Audit Logs API                | Tie ⚖️  |
+| **Access Control**         | RBAC + IAM + Key Vault policies           | Workspace-level permissions         | Tie ⚖️   |
+| **Audit Logging**          | Application Insights queries              | Slack Audit Logs API                | Tie ⚖️   |
 
 **Security Score:**
 
