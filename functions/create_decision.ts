@@ -589,7 +589,7 @@ async function finalizeDecision(
   decision: DecisionRecord,
   channel_id: string,
   message_ts: string,
-  decision_id: string,
+  _decision_id: string,
 ) {
   // Get all votes
   const votesResponse = await client.apps.datastore.query({

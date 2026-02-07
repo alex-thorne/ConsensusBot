@@ -83,7 +83,7 @@ jobs:
       - name: Verify required files
         run: |
           test -f manifest.ts || (echo "manifest.ts not found" && exit 1)
-          test -f deno.json || (echo "deno.json not found" && exit 1)
+          test -f deno.jsonc || (echo "deno.jsonc not found" && exit 1)
           test -f slack.json || (echo "slack.json not found" && exit 1)
           test -d datastores || (echo "datastores directory not found" && exit 1)
           test -d functions || (echo "functions directory not found" && exit 1)
