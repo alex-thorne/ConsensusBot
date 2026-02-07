@@ -139,6 +139,26 @@ export class MockSlackClient implements SlackClient {
     },
   };
 
+  // Mock usergroup members
+  usergroupMembers: Map<string, string[]> = new Map();
+
+  usergroups = {
+    users: {
+      list: (params: { usergroup: string }) => {
+        this.calls.push({ method: "usergroups.users.list", params });
+        const members = this.usergroupMembers.get(params.usergroup) || [];
+        return Promise.resolve({ ok: true, users: members });
+      },
+    },
+  };
+
+  /**
+   * Set mock members for a user group
+   */
+  setUsergroupMembers(usergroup: string, members: string[]): void {
+    this.usergroupMembers.set(usergroup, members);
+  }
+
   /**
    * Get all calls made to a specific method
    */

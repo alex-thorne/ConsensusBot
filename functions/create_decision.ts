@@ -37,6 +37,13 @@ export const CreateDecisionFunction = DefineFunction({
         },
         description: "List of required voters",
       },
+      required_usergroups: {
+        type: Schema.types.array,
+        items: {
+          type: Schema.slack.types.usergroup_id,
+        },
+        description: "List of required user groups",
+      },
       success_criteria: {
         type: Schema.types.string,
         description: "Success criteria for the decision",
@@ -84,12 +91,81 @@ export default SlackFunction(
     const now = new Date().toISOString();
     const deadline = inputs.deadline || getDefaultDeadline();
 
+    // Expand user groups to individual users
+    const allVoters = new Set<string>();
+
+    // Add individual voters first
+    if (inputs.required_voters && Array.isArray(inputs.required_voters)) {
+      for (const voter of inputs.required_voters) {
+        allVoters.add(voter);
+      }
+    }
+
+    // Expand user groups and add their members
+    if (
+      inputs.required_usergroups &&
+      Array.isArray(inputs.required_usergroups) &&
+      inputs.required_usergroups.length > 0
+    ) {
+      for (const usergroup_id of inputs.required_usergroups) {
+        try {
+          const usergroupResponse = await client.usergroups.users.list({
+            usergroup: usergroup_id,
+          });
+
+          if (!usergroupResponse.ok) {
+            console.error(
+              `Failed to fetch user group members: usergroup=${usergroup_id}, error=${usergroupResponse.error}`,
+            );
+            // Continue with other groups even if one fails
+            continue;
+          }
+
+          if (
+            usergroupResponse.users &&
+            Array.isArray(usergroupResponse.users)
+          ) {
+            const groupMembers = usergroupResponse.users;
+
+            // Add all members to the set (automatic deduplication)
+            for (const member of groupMembers) {
+              allVoters.add(member);
+            }
+
+            console.log(
+              `Expanded user group: usergroup=${usergroup_id}, members=${groupMembers.length}`,
+            );
+          }
+        } catch (error) {
+          console.error(
+            `Error fetching user group members: usergroup=${usergroup_id}, error=${error}`,
+          );
+          // Continue with other groups even if one fails
+        }
+      }
+    }
+
+    // Convert Set to Array for further processing
+    const finalVoters = Array.from(allVoters);
+
+    console.log(
+      `Total unique voters after expansion: ${finalVoters.length}`,
+    );
+
+    // Validate that we have at least one voter
+    if (finalVoters.length === 0) {
+      return {
+        error:
+          "No voters specified. Please select at least one voter or user group with members.",
+      };
+    }
+
     // Post voting message to channel
     const criteriaDisplay = inputs.success_criteria
       .replace(/_/g, " ")
       .replace(/\b\w/g, (l: string) => l.toUpperCase());
 
-    const votersMentions = inputs.required_voters
+    const votersMentions = finalVoters
       .map((userId: string) => `<@${userId}>`)
       .join(", ");
 
@@ -245,7 +321,7 @@ export default SlackFunction(
     }
 
     // Store required voters
-    for (const voter_id of inputs.required_voters) {
+    for (const voter_id of finalVoters) {
       const putVoter = await client.apps.datastore.put({
         datastore: VoterDatastore.name,
         item: {

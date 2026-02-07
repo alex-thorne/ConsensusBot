@@ -100,6 +100,17 @@ export interface SlackClient {
       error?: string;
     }>;
   };
+  usergroups: {
+    users: {
+      list: (params: {
+        usergroup: string;
+      }) => Promise<{
+        ok: boolean;
+        users?: string[];
+        error?: string;
+      }>;
+    };
+  };
 }
 
 /**
