@@ -154,6 +154,14 @@ export default SlackFunction(
       `Total unique voters after expansion: ${finalVoters.length}`,
     );
 
+    // Validate that we have at least one voter
+    if (finalVoters.length === 0) {
+      return {
+        error:
+          "No voters specified. Please select at least one voter or user group with members.",
+      };
+    }
+
     // Post voting message to channel
     const criteriaDisplay = inputs.success_criteria
       .replace(/_/g, " ")

@@ -39,6 +39,11 @@ Infrastructure (ROSI):
   - **Simple Majority** (>50% of votes must be yes)
   - **Supermajority** (≥66% of required voters must vote yes)
   - **Unanimity** (All votes must be yes, abstentions allowed)
+- 👥 **User Group Support**: Select individual users or entire Slack user groups
+  as voters
+  - User groups are automatically expanded to all current members
+  - Duplicate voters are automatically deduplicated
+  - Mix individual users and user groups seamlessly
 - 💬 **Interactive Voting**: Block Kit buttons for Yes/No/Abstain votes
 - 📊 **Slack Datastores**: All decision state maintained in managed datastores
 - 🔔 **Automated Reminders**: Scheduled DMs to voters who haven't voted (Mon-Fri
@@ -167,12 +172,18 @@ You should see a modal to create a new consensus decision!
 2. Fill out the modal with:
    - **Decision Name**: The title of the decision
    - **Proposal**: Details of what's being decided
-   - **Required Voters**: Select team members whose votes are needed
+   - **Required Voters**: Select individual team members whose votes are needed
+   - **Required User Groups (Optional)**: Select user groups to include all
+     members as voters
    - **Success Criteria**: Choose Simple Majority, Supermajority, or Unanimity
    - **Deadline**: When votes must be submitted (defaults to 5 business days)
 3. Click "Create Decision"
 
 A voting message will be posted to the channel with Yes/No/Abstain buttons.
+
+**Note**: When you select user groups, all current members of those groups will
+be added as required voters. If the same person is selected both individually
+and through a group, they will only be counted once (automatic deduplication).
 
 ### Voting on a Decision
 
