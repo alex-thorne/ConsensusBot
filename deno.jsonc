@@ -1,7 +1,12 @@
 {
   "tasks": {
     "start": "deno run --allow-all --watch=static/,routes/ dev.ts",
-    "test": "deno test --allow-all tests/"
+    "fmt": "deno fmt",
+    "fmt:check": "deno fmt --check",
+    "lint": "deno lint",
+    "check": "deno check manifest.ts",
+    "test": "deno test --allow-all tests/",
+    "ci": "deno task fmt:check && deno task lint && deno task check && deno task test"
   },
   "imports": {
     "deno-slack-sdk/": "https://deno.land/x/deno_slack_sdk@2.7.0/",
