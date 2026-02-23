@@ -4,13 +4,18 @@ import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { getDefaultDeadline } from "../utils/date_utils.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
-import { SlackBlock, SlackClient } from "../types/slack_types.ts";
+import {
+  SlackBlock,
+  SlackClient,
+  SlackUsergroupSummary,
+} from "../types/slack_types.ts";
 import { calculateDecisionOutcome } from "../utils/decision_logic.ts";
 import {
   formatADRForSlack,
   generateADRMarkdown,
 } from "../utils/adr_generator.ts";
 import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
+import { parseUsergroupInput } from "../utils/slack_parse.ts";
 
 /**
  * Function to create a new decision and post voting message
@@ -38,11 +43,9 @@ export const CreateDecisionFunction = DefineFunction({
         description: "Required voters selected from the user picker",
       },
       required_usergroups: {
-        type: Schema.types.array,
-        items: {
-          type: Schema.slack.types.usergroup_id,
-        },
-        description: "Required user groups selected from the usergroup picker",
+        type: Schema.types.string,
+        description:
+          "Required user groups as mentions, handles, or IDs (comma/space separated). Also accepts a legacy array of usergroup IDs.",
       },
       success_criteria: {
         type: Schema.types.string,
@@ -100,10 +103,35 @@ export default SlackFunction(
       };
     }
 
-    // Collect usergroup IDs (array of IDs from the usergroup picker)
-    const usergroupIds: string[] = inputs.required_usergroups
-      ? inputs.required_usergroups.filter(Boolean)
-      : [];
+    // Parse required_usergroups (supports string or legacy array)
+    let usergroupIds: string[] = [];
+    if (inputs.required_usergroups) {
+      const parsed = parseUsergroupInput(inputs.required_usergroups);
+      usergroupIds = parsed.ids;
+
+      // Resolve @handle references to IDs via the Slack API
+      if (parsed.handles.length > 0) {
+        try {
+          const groupsResponse = await client.usergroups.list({});
+          if (groupsResponse.ok && groupsResponse.usergroups) {
+            for (const handle of parsed.handles) {
+              const group = groupsResponse.usergroups.find(
+                (g: SlackUsergroupSummary) => g.handle === handle,
+              );
+              if (group) {
+                usergroupIds.push(group.id);
+              } else {
+                console.warn(
+                  `Could not resolve usergroup handle: @${handle} — skipping`,
+                );
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to resolve usergroup handles: ${error}`);
+        }
+      }
+    }
 
     // Expand user groups to individual users
     const allVoters = new Set<string>();
