@@ -101,6 +101,13 @@ export interface SlackClient {
     }>;
   };
   usergroups: {
+    list: (params?: {
+      include_disabled?: boolean;
+    }) => Promise<{
+      ok: boolean;
+      usergroups?: Array<{ id: string; handle: string; [key: string]: unknown }>;
+      error?: string;
+    }>;
     users: {
       list: (params: {
         usergroup: string;
