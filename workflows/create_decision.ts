@@ -50,29 +50,24 @@ const decisionForm = CreateDecisionWorkflow.addStep(
         {
           name: "required_voters",
           title: "Required Voters",
-          type: Schema.types.array,
-          items: {
-            type: Schema.slack.types.user_id,
-          },
-          description: "Select team members whose votes are required",
+          type: Schema.types.string,
+          description:
+            "Enter @mentions (e.g. <@U123ABC>) or user IDs, separated by commas or spaces",
+          long: true,
         },
         {
           name: "required_usergroups",
           title: "Required User Groups (Optional)",
-          type: Schema.types.array,
-          items: {
-            type: Schema.slack.types.usergroup_id,
-          },
+          type: Schema.types.string,
           description:
-            "Select user groups - all members will be added as voters",
-          default: [],
+            "Enter usergroup mentions (e.g. <!subteam^S123ABC|eng>), handles (e.g. @eng), or IDs, separated by commas or spaces",
+          long: true,
         },
         {
           name: "success_criteria",
           title: "Success Criteria",
           type: Schema.types.string,
           description: "Threshold for consensus",
-          enum: ["simple_majority", "super_majority", "unanimous"],
           choices: [
             {
               value: "simple_majority",

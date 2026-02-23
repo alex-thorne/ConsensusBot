@@ -94,6 +94,10 @@ class MockSlackClient implements SlackClient {
   };
 
   usergroups = {
+    // deno-lint-ignore require-await
+    list: async (_params?: { include_disabled?: boolean }) => {
+      return { ok: true, usergroups: [] };
+    },
     users: {
       // deno-lint-ignore require-await
       list: async (_params: { usergroup: string }) => {

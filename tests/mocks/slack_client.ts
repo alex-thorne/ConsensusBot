@@ -141,8 +141,14 @@ export class MockSlackClient implements SlackClient {
 
   // Mock usergroup members
   usergroupMembers: Map<string, string[]> = new Map();
+  // Mock usergroups list (handle -> id mapping)
+  usergroupsList: Array<{ id: string; handle: string }> = [];
 
   usergroups = {
+    list: (_params?: { include_disabled?: boolean }) => {
+      this.calls.push({ method: "usergroups.list", params: _params });
+      return Promise.resolve({ ok: true, usergroups: this.usergroupsList });
+    },
     users: {
       list: (params: { usergroup: string }) => {
         this.calls.push({ method: "usergroups.users.list", params });
@@ -157,6 +163,15 @@ export class MockSlackClient implements SlackClient {
    */
   setUsergroupMembers(usergroup: string, members: string[]): void {
     this.usergroupMembers.set(usergroup, members);
+  }
+
+  /**
+   * Set mock usergroups list for handle resolution
+   */
+  setUsergroupsList(
+    groups: Array<{ id: string; handle: string }>,
+  ): void {
+    this.usergroupsList = groups;
   }
 
   /**

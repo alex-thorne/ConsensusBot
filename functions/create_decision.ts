@@ -4,13 +4,18 @@ import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { getDefaultDeadline } from "../utils/date_utils.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
-import { SlackBlock, SlackClient } from "../types/slack_types.ts";
+import {
+  SlackBlock,
+  SlackClient,
+  SlackUsergroupSummary,
+} from "../types/slack_types.ts";
 import { calculateDecisionOutcome } from "../utils/decision_logic.ts";
 import {
   formatADRForSlack,
   generateADRMarkdown,
 } from "../utils/adr_generator.ts";
 import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
+import { parseUsergroupInput, parseUserIds } from "../utils/slack_parse.ts";
 
 /**
  * Function to create a new decision and post voting message
@@ -31,18 +36,14 @@ export const CreateDecisionFunction = DefineFunction({
         description: "Decision proposal details",
       },
       required_voters: {
-        type: Schema.types.array,
-        items: {
-          type: Schema.slack.types.user_id,
-        },
-        description: "List of required voters",
+        type: Schema.types.string,
+        description:
+          "Required voters as @mentions or user IDs (comma/space separated). Also accepts a legacy array of user IDs.",
       },
       required_usergroups: {
-        type: Schema.types.array,
-        items: {
-          type: Schema.slack.types.usergroup_id,
-        },
-        description: "List of required user groups",
+        type: Schema.types.string,
+        description:
+          "Required user groups as mentions, handles, or IDs (comma/space separated). Also accepts a legacy array of usergroup IDs.",
       },
       success_criteria: {
         type: Schema.types.string,
@@ -91,23 +92,56 @@ export default SlackFunction(
     const now = new Date().toISOString();
     const deadline = inputs.deadline || getDefaultDeadline();
 
-    // Expand user groups to individual users
-    const allVoters = new Set<string>();
+    // Parse required_voters (supports string or legacy array)
+    const parsedVoterIds = parseUserIds(inputs.required_voters);
+    if (parsedVoterIds.length === 0) {
+      return {
+        error:
+          "No valid voter IDs found. Please enter @mentions (e.g. <@U123ABC>) or user IDs separated by commas or spaces.",
+      };
+    }
 
-    // Add individual voters first
-    if (inputs.required_voters && Array.isArray(inputs.required_voters)) {
-      for (const voter of inputs.required_voters) {
-        allVoters.add(voter);
+    // Parse required_usergroups (supports string or legacy array)
+    let usergroupIds: string[] = [];
+    if (inputs.required_usergroups) {
+      const parsed = parseUsergroupInput(inputs.required_usergroups);
+      usergroupIds = parsed.ids;
+
+      // Resolve @handle references to IDs via the Slack API
+      if (parsed.handles.length > 0) {
+        try {
+          const groupsResponse = await client.usergroups.list({});
+          if (groupsResponse.ok && groupsResponse.usergroups) {
+            for (const handle of parsed.handles) {
+              const group = groupsResponse.usergroups.find(
+                (g: SlackUsergroupSummary) => g.handle === handle,
+              );
+              if (group) {
+                usergroupIds.push(group.id);
+              } else {
+                console.warn(
+                  `Could not resolve usergroup handle: @${handle} — skipping`,
+                );
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to resolve usergroup handles: ${error}`);
+        }
       }
     }
 
+    // Expand user groups to individual users
+    const allVoters = new Set<string>();
+
+    // Add individually specified voters first
+    for (const voter of parsedVoterIds) {
+      allVoters.add(voter);
+    }
+
     // Expand user groups and add their members
-    if (
-      inputs.required_usergroups &&
-      Array.isArray(inputs.required_usergroups) &&
-      inputs.required_usergroups.length > 0
-    ) {
-      for (const usergroup_id of inputs.required_usergroups) {
+    if (usergroupIds.length > 0) {
+      for (const usergroup_id of usergroupIds) {
         try {
           const usergroupResponse = await client.usergroups.users.list({
             usergroup: usergroup_id,
