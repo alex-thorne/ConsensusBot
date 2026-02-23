@@ -4,7 +4,11 @@ import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { getDefaultDeadline } from "../utils/date_utils.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
-import { SlackBlock, SlackClient, SlackUsergroupSummary } from "../types/slack_types.ts";
+import {
+  SlackBlock,
+  SlackClient,
+  SlackUsergroupSummary,
+} from "../types/slack_types.ts";
 import { calculateDecisionOutcome } from "../utils/decision_logic.ts";
 import {
   formatADRForSlack,
