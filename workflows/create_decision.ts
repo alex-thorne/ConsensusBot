@@ -50,18 +50,21 @@ const decisionForm = CreateDecisionWorkflow.addStep(
         {
           name: "required_voters",
           title: "Required Voters",
-          type: Schema.types.string,
-          description:
-            "Enter @mentions (e.g. <@U123ABC>) or user IDs, separated by commas or spaces",
-          long: true,
+          type: Schema.types.array,
+          items: {
+            type: Schema.slack.types.user_id,
+          },
+          description: "Select the people who must vote on this decision",
         },
         {
           name: "required_usergroups",
           title: "Required User Groups (Optional)",
-          type: Schema.types.string,
+          type: Schema.types.array,
+          items: {
+            type: Schema.slack.types.usergroup_id,
+          },
           description:
-            "Enter usergroup mentions (e.g. <!subteam^S123ABC|eng>), handles (e.g. @eng), or IDs, separated by commas or spaces",
-          long: true,
+            "Select user groups whose members must vote on this decision",
         },
         {
           name: "success_criteria",
