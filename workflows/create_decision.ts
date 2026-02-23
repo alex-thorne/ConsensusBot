@@ -39,7 +39,6 @@ const decisionForm = CreateDecisionWorkflow.addStep(
           title: "Decision Name",
           type: Schema.types.string,
           description: "A clear title for this decision",
-          maxLength: 100,
         },
         {
           name: "proposal",
@@ -47,7 +46,6 @@ const decisionForm = CreateDecisionWorkflow.addStep(
           type: Schema.types.string,
           description: "Details of the target outcome and strategic alignment",
           long: true,
-          maxLength: 2000,
         },
         {
           name: "required_voters",
