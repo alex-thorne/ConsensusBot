@@ -2,18 +2,20 @@
 
 ## CI Commands
 
-The project uses [Deno](https://deno.land/) tasks defined in `deno.jsonc` as the canonical way to run checks:
+The project uses [Deno](https://deno.land/) tasks defined in `deno.jsonc` as the
+canonical way to run checks:
 
-| Command | Description |
-|---|---|
-| `deno task fmt` | Auto-format all source files |
+| Command               | Description                              |
+| --------------------- | ---------------------------------------- |
+| `deno task fmt`       | Auto-format all source files             |
 | `deno task fmt:check` | Check formatting without modifying files |
-| `deno task lint` | Run the linter |
-| `deno task check` | Run TypeScript type checking |
-| `deno task test` | Run the test suite |
-| `deno task ci` | Run all of the above checks in sequence |
+| `deno task lint`      | Run the linter                           |
+| `deno task check`     | Run TypeScript type checking             |
+| `deno task test`      | Run the test suite                       |
+| `deno task ci`        | Run all of the above checks in sequence  |
 
-Run `deno task ci` before opening a pull request to catch formatting, lint, and type errors locally.
+Run `deno task ci` before opening a pull request to catch formatting, lint, and
+type errors locally.
 
 ## Git Hooks
 

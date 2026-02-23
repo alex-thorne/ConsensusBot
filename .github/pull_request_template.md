@@ -7,4 +7,5 @@ Before marking this PR as ready for review, please confirm:
 - [ ] `deno task lint` — no lint warnings or errors
 - [ ] `deno task check` — no TypeScript type errors
 - [ ] `deno task test` — all tests pass
-- [ ] Changes are documented (README / AGENTS.md / inline comments) where appropriate
+- [ ] Changes are documented (README / AGENTS.md / inline comments) where
+      appropriate
