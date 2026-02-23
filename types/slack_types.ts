@@ -6,6 +6,15 @@
  */
 
 /**
+ * Represents a single item returned by the usergroups.list API.
+ */
+export type SlackUsergroupSummary = {
+  id: string;
+  handle: string;
+  [key: string]: unknown;
+};
+
+/**
  * Slack API Client Type
  * Represents the Slack client with methods for apps, chat, users, pins, etc.
  */
@@ -105,7 +114,7 @@ export interface SlackClient {
       include_disabled?: boolean;
     }) => Promise<{
       ok: boolean;
-      usergroups?: Array<{ id: string; handle: string; [key: string]: unknown }>;
+      usergroups?: SlackUsergroupSummary[];
       error?: string;
     }>;
     users: {

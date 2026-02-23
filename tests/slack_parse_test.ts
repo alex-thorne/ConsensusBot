@@ -5,7 +5,7 @@
  */
 
 import { assertEquals } from "@std/assert";
-import { parseUserIds, parseUsergroupInput } from "../utils/slack_parse.ts";
+import { parseUsergroupInput, parseUserIds } from "../utils/slack_parse.ts";
 
 // ---------------------------------------------------------------------------
 // parseUserIds

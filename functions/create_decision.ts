@@ -4,14 +4,14 @@ import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { getDefaultDeadline } from "../utils/date_utils.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
-import { SlackBlock, SlackClient } from "../types/slack_types.ts";
+import { SlackBlock, SlackClient, SlackUsergroupSummary } from "../types/slack_types.ts";
 import { calculateDecisionOutcome } from "../utils/decision_logic.ts";
 import {
   formatADRForSlack,
   generateADRMarkdown,
 } from "../utils/adr_generator.ts";
 import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
-import { parseUserIds, parseUsergroupInput } from "../utils/slack_parse.ts";
+import { parseUsergroupInput, parseUserIds } from "../utils/slack_parse.ts";
 
 /**
  * Function to create a new decision and post voting message
@@ -110,7 +110,7 @@ export default SlackFunction(
           if (groupsResponse.ok && groupsResponse.usergroups) {
             for (const handle of parsed.handles) {
               const group = groupsResponse.usergroups.find(
-                (g) => g.handle === handle,
+                (g: SlackUsergroupSummary) => g.handle === handle,
               );
               if (group) {
                 usergroupIds.push(group.id);
