@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+set -e
+
+echo "Running pre-commit checks..."
+
+deno task fmt:check
+deno task lint
+deno task check
+
+echo "Pre-commit checks passed."
