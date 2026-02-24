@@ -284,6 +284,26 @@ export default SlackFunction(
               action_id: "vote_abstain",
               value: "{{decision_id}}",
             },
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "🚫 Cancel",
+                emoji: true,
+              },
+              action_id: "decision_cancel",
+              value: "{{decision_id}}",
+            },
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "🗑️ Delete",
+                emoji: true,
+              },
+              action_id: "decision_delete",
+              value: "{{decision_id}}",
+            },
           ],
         },
         {
@@ -591,6 +611,26 @@ export default SlackFunction(
                 action_id: "vote_abstain",
                 value: decision_id,
               },
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "🚫 Cancel",
+                  emoji: true,
+                },
+                action_id: "decision_cancel",
+                value: decision_id,
+              },
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "🗑️ Delete",
+                  emoji: true,
+                },
+                action_id: "decision_delete",
+                value: decision_id,
+              },
             ],
           },
           {
@@ -655,6 +695,231 @@ export default SlackFunction(
         decision_id,
       );
     }
+  },
+).addBlockActionsHandler(
+  ["decision_cancel"],
+  async ({ action, body, client }) => {
+    const decision_id = action.value;
+    const user_id = body.user.id;
+    const channel_id = body.container.channel_id;
+    const message_ts = body.container.message_ts;
+
+    console.log(
+      `Cancel button clicked: decision_id=${decision_id}, user_id=${user_id}`,
+    );
+
+    // Get decision
+    const getDecision = await client.apps.datastore.get({
+      datastore: DecisionDatastore.name,
+      id: decision_id,
+    });
+
+    if (!getDecision.ok || !getDecision.item) {
+      await client.chat.postEphemeral({
+        channel: channel_id,
+        user: user_id,
+        text: "Decision not found.",
+      });
+      return;
+    }
+
+    const decision = getDecision.item as DecisionRecord;
+
+    if (decision.status !== "active") {
+      await client.chat.postEphemeral({
+        channel: channel_id,
+        user: user_id,
+        text: "This decision is no longer active.",
+      });
+      return;
+    }
+
+    // Update decision status to cancelled
+    const now = new Date().toISOString();
+    await client.apps.datastore.put({
+      datastore: DecisionDatastore.name,
+      item: {
+        ...decision,
+        status: "cancelled",
+        updated_at: now,
+      },
+    });
+
+    // Unpin the message
+    await client.pins.remove({
+      channel: channel_id,
+      timestamp: message_ts,
+    });
+
+    // Update message to reflect cancelled status (no voting/management buttons)
+    await client.chat.update({
+      channel: channel_id,
+      ts: message_ts,
+      text: `Decision Cancelled: ${decision.name}`,
+      blocks: [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: `🚫 ${decision.name}`,
+            emoji: true,
+          },
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*Proposal:*\n${decision.proposal}`,
+          },
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Status:*\n🚫 Cancelled`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Cancelled by:*\n<@${user_id}>`,
+            },
+          ],
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text:
+                `Created by <@${decision.creator_id}> | Cancelled at ${now}`,
+            },
+          ],
+        },
+      ],
+    });
+
+    // Post ephemeral confirmation
+    await client.chat.postEphemeral({
+      channel: channel_id,
+      user: user_id,
+      text: `🚫 Decision "${decision.name}" has been cancelled.`,
+    });
+  },
+).addBlockActionsHandler(
+  ["decision_delete"],
+  async ({ action, body, client }) => {
+    const decision_id = action.value;
+    const user_id = body.user.id;
+    const channel_id = body.container.channel_id;
+    const message_ts = body.container.message_ts;
+
+    console.log(
+      `Delete button clicked: decision_id=${decision_id}, user_id=${user_id}`,
+    );
+
+    // Get decision
+    const getDecision = await client.apps.datastore.get({
+      datastore: DecisionDatastore.name,
+      id: decision_id,
+    });
+
+    if (!getDecision.ok || !getDecision.item) {
+      await client.chat.postEphemeral({
+        channel: channel_id,
+        user: user_id,
+        text: "Decision not found.",
+      });
+      return;
+    }
+
+    const decision = getDecision.item as DecisionRecord;
+
+    // Only the creator may delete
+    if (decision.creator_id !== user_id) {
+      await client.chat.postEphemeral({
+        channel: channel_id,
+        user: user_id,
+        text: "⛔ Only the creator of this decision can delete it.",
+      });
+      return;
+    }
+
+    // Delete associated votes
+    const votesResponse = await client.apps.datastore.query({
+      datastore: VoteDatastore.name,
+      expression: "#decision_id = :decision_id",
+      expression_attributes: { "#decision_id": "decision_id" },
+      expression_values: { ":decision_id": decision_id },
+    });
+
+    if (votesResponse.ok) {
+      for (const vote of votesResponse.items) {
+        await client.apps.datastore.delete({
+          datastore: VoteDatastore.name,
+          id: vote.id as string,
+        });
+      }
+    }
+
+    // Delete associated voters
+    const votersResponse = await client.apps.datastore.query({
+      datastore: VoterDatastore.name,
+      expression: "#decision_id = :decision_id",
+      expression_attributes: { "#decision_id": "decision_id" },
+      expression_values: { ":decision_id": decision_id },
+    });
+
+    if (votersResponse.ok) {
+      for (const voter of votersResponse.items) {
+        await client.apps.datastore.delete({
+          datastore: VoterDatastore.name,
+          id: voter.id as string,
+        });
+      }
+    }
+
+    // Delete the decision record
+    await client.apps.datastore.delete({
+      datastore: DecisionDatastore.name,
+      id: decision_id,
+    });
+
+    // Unpin the message
+    await client.pins.remove({
+      channel: channel_id,
+      timestamp: message_ts,
+    });
+
+    // Try to delete the Slack message; fall back to updating it
+    const deleteResult = await client.chat.delete({
+      channel: channel_id,
+      ts: message_ts,
+    });
+
+    if (!deleteResult.ok) {
+      await client.chat.update({
+        channel: channel_id,
+        ts: message_ts,
+        text: `Decision Deleted: ${decision.name}`,
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text:
+                `_This decision ("${decision.name}") was deleted by <@${user_id}>._`,
+            },
+          },
+        ],
+      });
+    }
+
+    // Post ephemeral confirmation
+    await client.chat.postEphemeral({
+      channel: channel_id,
+      user: user_id,
+      text: `🗑️ Decision "${decision.name}" has been deleted.`,
+    });
   },
 );
 

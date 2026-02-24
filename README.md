@@ -45,6 +45,10 @@ Infrastructure (ROSI):
   - Duplicate voters are automatically deduplicated
   - Mix individual users and user groups seamlessly
 - 💬 **Interactive Voting**: Block Kit buttons for Yes/No/Abstain votes
+- 🚫 **Cancel Decisions**: Any workspace member can cancel an active decision
+  - Updates decision status and unpins the message
+- 🗑️ **Delete Decisions**: Decision creators can permanently delete a decision
+  - Removes all associated votes and voter records from datastores
 - 📊 **Slack Datastores**: All decision state maintained in managed datastores
 - 🔔 **Automated Reminders**: Scheduled DMs to voters who haven't voted (Mon-Fri
   at 9 AM)
@@ -184,6 +188,16 @@ A voting message will be posted to the channel with Yes/No/Abstain buttons.
 **Note**: When you select user groups, all current members of those groups will
 be added as required voters. If the same person is selected both individually
 and through a group, they will only be counted once (automatic deduplication).
+
+### Cancelling or Deleting a Decision
+
+Each decision message includes two management buttons:
+
+- 🚫 **Cancel**: Available to any workspace member. Marks the decision as
+  cancelled, unpins the message, and removes the voting buttons.
+- 🗑️ **Delete**: Available only to the decision creator. Permanently removes the
+  decision and all associated votes from the datastores. Other users clicking
+  Delete will receive an ephemeral "not authorized" message.
 
 ### Voting on a Decision
 
@@ -397,7 +411,7 @@ Stores decision metadata:
 - `channel_id`: Channel where posted
 - `creator_id`: User who created it
 - `message_ts`: Message timestamp
-- `status`: active, approved, or rejected
+- `status`: active, approved, rejected, or cancelled
 - `created_at`, `updated_at`: Timestamps
 
 ### Votes Datastore
