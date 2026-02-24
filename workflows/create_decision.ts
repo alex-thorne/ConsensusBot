@@ -69,6 +69,7 @@ const decisionForm = CreateDecisionWorkflow.addStep(
           title: "Success Criteria",
           type: Schema.types.string,
           description: "Threshold for consensus",
+          enum: ["simple_majority", "super_majority", "unanimous"],
           choices: [
             {
               value: "simple_majority",
