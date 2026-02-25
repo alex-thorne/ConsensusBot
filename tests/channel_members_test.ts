@@ -157,7 +157,13 @@ Deno.test("channel members - should handle pagination", async () => {
   const mockClient = createMockSlackClient();
 
   // Set up 5 members; pagination splits into pages of 2
-  mockClient.setChannelMembers("C123456", ["U001", "U002", "U003", "U004", "U005"]);
+  mockClient.setChannelMembers("C123456", [
+    "U001",
+    "U002",
+    "U003",
+    "U004",
+    "U005",
+  ]);
   mockClient.enableChannelMemberPagination();
 
   const allMembers: string[] = [];
@@ -184,7 +190,10 @@ Deno.test("channel members - should enforce max voter limit", () => {
   const MAX_CHANNEL_VOTERS = 500;
 
   // Simulate 501 members
-  const members = Array.from({ length: 501 }, (_, i) => `U${String(i).padStart(6, "0")}`);
+  const members = Array.from(
+    { length: 501 },
+    (_, i) => `U${String(i).padStart(6, "0")}`,
+  );
 
   const exceedsLimit = members.length > MAX_CHANNEL_VOTERS;
 
