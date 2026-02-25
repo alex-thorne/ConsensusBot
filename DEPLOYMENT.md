@@ -150,6 +150,9 @@ Check that your app has the required bot scopes:
 - `datastore:write`
 - `pins:write`
 - `users:read`
+- `usergroups:read`
+- `channels:read`
+- `groups:read`
 - `im:write`
 
 These are defined in `manifest.ts`.
