@@ -206,7 +206,9 @@ export default SlackFunction(
             break;
           }
 
-          if (membersResponse.members && Array.isArray(membersResponse.members)) {
+          if (
+            membersResponse.members && Array.isArray(membersResponse.members)
+          ) {
             channelMemberIds.push(...membersResponse.members);
           }
 
