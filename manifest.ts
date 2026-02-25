@@ -34,6 +34,8 @@ export default Manifest({
     "pins:write",
     "users:read",
     "usergroups:read",
+    "channels:read",
+    "groups:read",
     "im:write",
   ],
 });

@@ -87,8 +87,23 @@ export interface SlackClient {
     }) => Promise<{
       ok: boolean;
       user?: {
+        id?: string;
         real_name?: string;
         name?: string;
+        is_bot?: boolean;
+      };
+      error?: string;
+    }>;
+  };
+  conversations: {
+    members: (params: {
+      channel: string;
+      cursor?: string;
+    }) => Promise<{
+      ok: boolean;
+      members?: string[];
+      response_metadata?: {
+        next_cursor?: string;
       };
       error?: string;
     }>;

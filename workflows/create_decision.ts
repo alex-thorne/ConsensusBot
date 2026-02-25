@@ -65,6 +65,13 @@ const decisionForm = CreateDecisionWorkflow.addStep(
           long: true,
         },
         {
+          name: "include_channel_members",
+          title: "Include all channel members",
+          type: Schema.types.boolean,
+          description:
+            "When checked, all non-bot members of this channel will be added as required voters",
+        },
+        {
           name: "success_criteria",
           title: "Success Criteria",
           type: Schema.types.string,
@@ -111,6 +118,7 @@ CreateDecisionWorkflow.addStep(CreateDecisionFunction, {
   proposal: decisionForm.outputs.fields.proposal,
   required_voters: decisionForm.outputs.fields.required_voters,
   required_usergroups: decisionForm.outputs.fields.required_usergroups,
+  include_channel_members: decisionForm.outputs.fields.include_channel_members,
   success_criteria: decisionForm.outputs.fields.success_criteria,
   deadline: decisionForm.outputs.fields.deadline,
   channel_id: CreateDecisionWorkflow.inputs.channel_id,

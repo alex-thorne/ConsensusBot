@@ -47,6 +47,11 @@ export const CreateDecisionFunction = DefineFunction({
         description:
           "Required user groups as mentions, handles, or IDs (comma/space separated). Also accepts a legacy array of usergroup IDs.",
       },
+      include_channel_members: {
+        type: Schema.types.boolean,
+        description:
+          "When true, all non-bot members of the channel will be added as required voters",
+      },
       success_criteria: {
         type: Schema.types.string,
         description: "Success criteria for the decision",
@@ -96,7 +101,7 @@ export default SlackFunction(
 
     // Validate required_voters (array of user IDs from the user picker)
     const parsedVoterIds = inputs.required_voters.filter(Boolean);
-    if (parsedVoterIds.length === 0) {
+    if (parsedVoterIds.length === 0 && !inputs.include_channel_members) {
       return {
         error:
           "No valid voter IDs found. Please select at least one voter using the user picker.",
@@ -179,6 +184,69 @@ export default SlackFunction(
           // Continue with other groups even if one fails
         }
       }
+    }
+
+    // Expand channel members and add non-bot members
+    if (inputs.include_channel_members) {
+      const MAX_CHANNEL_VOTERS = 500;
+      let cursor: string | undefined = undefined;
+      const channelMemberIds: string[] = [];
+
+      do {
+        try {
+          const membersResponse = await client.conversations.members({
+            channel: inputs.channel_id,
+            ...(cursor ? { cursor } : {}),
+          });
+
+          if (!membersResponse.ok) {
+            console.error(
+              `Failed to fetch channel members: error=${membersResponse.error}`,
+            );
+            break;
+          }
+
+          if (membersResponse.members && Array.isArray(membersResponse.members)) {
+            channelMemberIds.push(...membersResponse.members);
+          }
+
+          cursor = membersResponse.response_metadata?.next_cursor || undefined;
+        } catch (error) {
+          console.error(`Error fetching channel members: ${error}`);
+          break;
+        }
+      } while (cursor);
+
+      if (channelMemberIds.length > MAX_CHANNEL_VOTERS) {
+        return {
+          error:
+            `Channel has too many members (${channelMemberIds.length}). Maximum allowed is ${MAX_CHANNEL_VOTERS} voters. Please use individual user selection or user groups instead.`,
+        };
+      }
+
+      let channelMembersAdded = 0;
+      for (const memberId of channelMemberIds) {
+        try {
+          const userInfoResponse = await client.users.info({ user: memberId });
+          if (
+            userInfoResponse.ok &&
+            userInfoResponse.user &&
+            !userInfoResponse.user.is_bot &&
+            userInfoResponse.user.id !== "USLACKBOT"
+          ) {
+            allVoters.add(memberId);
+            channelMembersAdded++;
+          }
+        } catch (error) {
+          console.error(
+            `Error fetching user info for ${memberId}: ${error}`,
+          );
+        }
+      }
+
+      console.log(
+        `Expanded channel members: channel=${inputs.channel_id}, members_added=${channelMembersAdded}`,
+      );
     }
 
     // Convert Set to Array for further processing
