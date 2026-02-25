@@ -170,7 +170,12 @@ Deno.test("create_decision with channel members - should deduplicate usergroup m
 Deno.test("create_decision with channel members - should filter bot users from channel", async () => {
   const mockClient = createMockSlackClient();
 
-  mockClient.setChannelMembers("C123456", ["U001", "UBOT1", "U003", "USLACKBOT"]);
+  mockClient.setChannelMembers("C123456", [
+    "U001",
+    "UBOT1",
+    "U003",
+    "USLACKBOT",
+  ]);
   mockClient.setUserInfo("UBOT1", { is_bot: true });
 
   const inputs = {
@@ -258,7 +263,13 @@ Deno.test("create_decision with channel members - should post message with chann
 Deno.test("create_decision with channel members - should handle pagination", async () => {
   const mockClient = createMockSlackClient();
 
-  mockClient.setChannelMembers("C123456", ["U001", "U002", "U003", "U004", "U005"]);
+  mockClient.setChannelMembers("C123456", [
+    "U001",
+    "U002",
+    "U003",
+    "U004",
+    "U005",
+  ]);
   mockClient.enableChannelMemberPagination();
 
   const allVoters = new Set<string>();
