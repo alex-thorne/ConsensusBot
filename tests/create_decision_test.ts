@@ -90,6 +90,16 @@ class MockSlackClient implements SlackClient {
     },
   };
 
+  conversations = {
+    // deno-lint-ignore require-await
+    members: async (_params: { channel: string; cursor?: string }) => {
+      return {
+        ok: true,
+        members: ["U12345", "U67890"],
+      };
+    },
+  };
+
   pins = {
     // deno-lint-ignore require-await
     add: async (_params: { channel: string; timestamp: string }) => {

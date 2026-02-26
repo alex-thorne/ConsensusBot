@@ -108,11 +108,46 @@ export class MockSlackClient implements SlackClient {
   };
 
   conversations = {
-    members: (params: { channel: string }) => {
+    members: (params: { channel: string; cursor?: string }) => {
       this.calls.push({ method: "conversations.members", params });
+      const allMembers = this.channelMembers.get(params.channel) || [
+        "U123456",
+        "U234567",
+        "U345678",
+      ];
+
+      // Support simple pagination: split into pages of 2 for testing
+      if (params.cursor) {
+        // cursor encodes the starting index
+        const startIdx = parseInt(params.cursor, 10);
+        const pageSize = 2;
+        const page = allMembers.slice(startIdx, startIdx + pageSize);
+        const nextStart = startIdx + pageSize;
+        const nextCursor = nextStart < allMembers.length
+          ? String(nextStart)
+          : undefined;
+        return Promise.resolve({
+          ok: true,
+          members: page,
+          response_metadata: { next_cursor: nextCursor },
+        });
+      }
+
+      // First page (no cursor)
+      const pageSize = 2;
+      if (allMembers.length > pageSize && this.paginateChannelMembers) {
+        const page = allMembers.slice(0, pageSize);
+        return Promise.resolve({
+          ok: true,
+          members: page,
+          response_metadata: { next_cursor: String(pageSize) },
+        });
+      }
+
       return Promise.resolve({
         ok: true,
-        members: ["U123456", "U234567", "U345678"],
+        members: allMembers,
+        response_metadata: { next_cursor: undefined },
       });
     },
   };
@@ -120,12 +155,14 @@ export class MockSlackClient implements SlackClient {
   users = {
     info: (params: { user: string }) => {
       this.calls.push({ method: "users.info", params });
+      const userInfo = this.userInfoMap.get(params.user);
       return Promise.resolve({
         ok: true,
         user: {
           id: params.user,
           name: `user_${params.user}`,
           real_name: `Test User ${params.user}`,
+          is_bot: userInfo?.is_bot ?? false,
         },
       });
     },
@@ -152,6 +189,12 @@ export class MockSlackClient implements SlackClient {
   usergroupMembers: Map<string, string[]> = new Map();
   // Mock usergroups list (handle -> id mapping)
   usergroupsList: Array<{ id: string; handle: string }> = [];
+  // Mock channel members (channelId -> memberIds)
+  channelMembers: Map<string, string[]> = new Map();
+  // Mock user info (userId -> { is_bot })
+  userInfoMap: Map<string, { is_bot?: boolean }> = new Map();
+  // Whether to paginate channel members responses
+  paginateChannelMembers = false;
 
   usergroups = {
     list: (_params?: { include_disabled?: boolean }) => {
@@ -181,6 +224,27 @@ export class MockSlackClient implements SlackClient {
     groups: Array<{ id: string; handle: string }>,
   ): void {
     this.usergroupsList = groups;
+  }
+
+  /**
+   * Set mock members for a channel
+   */
+  setChannelMembers(channelId: string, memberIds: string[]): void {
+    this.channelMembers.set(channelId, memberIds);
+  }
+
+  /**
+   * Set mock user info for bot/non-bot detection
+   */
+  setUserInfo(userId: string, info: { is_bot?: boolean }): void {
+    this.userInfoMap.set(userId, info);
+  }
+
+  /**
+   * Enable paginated responses for conversations.members
+   */
+  enableChannelMemberPagination(): void {
+    this.paginateChannelMembers = true;
   }
 
   /**
