@@ -44,6 +44,11 @@ export class MockSlackClient implements SlackClient {
         this.calls.push({ method: "apps.datastore.query", params });
         return Promise.resolve({ ok: true, items: this.datastoreQueryResults });
       },
+      delete: (params: { datastore: string; id: string }) => {
+        this.calls.push({ method: "apps.datastore.delete", params });
+        this.datastoreItems.delete(params.id);
+        return Promise.resolve({ ok: true });
+      },
       update: (params: {
         datastore: string;
         item: Record<string, unknown>;
@@ -94,6 +99,10 @@ export class MockSlackClient implements SlackClient {
       blocks?: SlackBlock[];
     }) => {
       this.calls.push({ method: "chat.update", params });
+      return Promise.resolve({ ok: true });
+    },
+    delete: (params: { channel: string; ts: string }) => {
+      this.calls.push({ method: "chat.delete", params });
       return Promise.resolve({ ok: true });
     },
   };

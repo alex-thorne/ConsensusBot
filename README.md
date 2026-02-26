@@ -49,6 +49,10 @@ Infrastructure (ROSI):
   - Bot users are automatically excluded from the voter list
   - The voter list is a point-in-time snapshot at decision creation time
 - 💬 **Interactive Voting**: Block Kit buttons for Yes/No/Abstain votes
+- 🚫 **Cancel Decisions**: Any workspace member can cancel an active decision
+  - Updates decision status and unpins the message
+- 🗑️ **Delete Decisions**: Decision creators can permanently delete a decision
+  - Removes all associated votes and voter records from datastores
 - 📊 **Slack Datastores**: All decision state maintained in managed datastores
 - 🔔 **Automated Reminders**: Scheduled DMs to voters who haven't voted (Mon-Fri
   at 9 AM)
@@ -193,6 +197,16 @@ selected through multiple methods, they will only be counted once (automatic
 deduplication). Bot users are automatically excluded when using channel member
 expansion. The voter list is a snapshot taken at decision creation time — users
 joining or leaving the channel afterwards will not affect the voter list.
+
+### Cancelling or Deleting a Decision
+
+Each decision message includes two management buttons:
+
+- 🚫 **Cancel**: Available to any workspace member. Marks the decision as
+  cancelled, unpins the message, and removes the voting buttons.
+- 🗑️ **Delete**: Available only to the decision creator. Permanently removes the
+  decision and all associated votes from the datastores. Other users clicking
+  Delete will receive an ephemeral "not authorized" message.
 
 ### Voting on a Decision
 
@@ -406,7 +420,7 @@ Stores decision metadata:
 - `channel_id`: Channel where posted
 - `creator_id`: User who created it
 - `message_ts`: Message timestamp
-- `status`: active, approved, or rejected
+- `status`: active, approved, rejected, or cancelled
 - `created_at`, `updated_at`: Timestamps
 
 ### Votes Datastore
