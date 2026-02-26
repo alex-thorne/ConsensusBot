@@ -46,6 +46,13 @@ export interface SlackClient {
         items: Array<Record<string, unknown>>;
         error?: string;
       }>;
+      delete: (params: {
+        datastore: string;
+        id: string;
+      }) => Promise<{
+        ok: boolean;
+        error?: string;
+      }>;
     };
   };
   chat: {
@@ -80,6 +87,13 @@ export interface SlackClient {
       ok: boolean;
       error?: string;
     }>;
+    delete: (params: {
+      channel: string;
+      ts: string;
+    }) => Promise<{
+      ok: boolean;
+      error?: string;
+    }>;
   };
   users: {
     info: (params: {
@@ -87,8 +101,23 @@ export interface SlackClient {
     }) => Promise<{
       ok: boolean;
       user?: {
+        id?: string;
         real_name?: string;
         name?: string;
+        is_bot?: boolean;
+      };
+      error?: string;
+    }>;
+  };
+  conversations: {
+    members: (params: {
+      channel: string;
+      cursor?: string;
+    }) => Promise<{
+      ok: boolean;
+      members?: string[];
+      response_metadata?: {
+        next_cursor?: string;
       };
       error?: string;
     }>;

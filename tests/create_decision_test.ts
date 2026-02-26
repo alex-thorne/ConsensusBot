@@ -30,6 +30,10 @@ class MockSlackClient implements SlackClient {
       }) => {
         return { ok: true, items: [] };
       },
+      // deno-lint-ignore require-await
+      delete: async (_params: { datastore: string; id: string }) => {
+        return { ok: true };
+      },
     },
   };
 
@@ -67,6 +71,10 @@ class MockSlackClient implements SlackClient {
     }) => {
       return { ok: true };
     },
+    // deno-lint-ignore require-await
+    delete: async (_params: { channel: string; ts: string }) => {
+      return { ok: true };
+    },
   };
 
   users = {
@@ -78,6 +86,16 @@ class MockSlackClient implements SlackClient {
           real_name: "Test User",
           name: "testuser",
         },
+      };
+    },
+  };
+
+  conversations = {
+    // deno-lint-ignore require-await
+    members: async (_params: { channel: string; cursor?: string }) => {
+      return {
+        ok: true,
+        members: ["U12345", "U67890"],
       };
     },
   };

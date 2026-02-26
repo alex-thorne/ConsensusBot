@@ -3,7 +3,14 @@ set -e
 
 echo "Running pre-commit checks..."
 
-deno task fmt:check
+# Auto-format first, then check if anything changed
+deno fmt
+if ! git diff --quiet; then
+  echo "ERROR: deno fmt modified files. Please stage the formatted changes and commit again."
+  git diff --name-only
+  exit 1
+fi
+
 deno task lint
 deno task check
 
