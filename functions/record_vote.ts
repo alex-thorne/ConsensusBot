@@ -109,6 +109,12 @@ export default SlackFunction(
     const vote_id = `${decision_id}_${user_id}`;
     const now = new Date().toISOString();
 
+    // NOTE: This legacy code path has the same eventual consistency issue as
+    // create_decision.ts: the query after put() may not reflect the just-written
+    // vote. The active code path for voting is the block action handler in
+    // create_decision.ts, which merges the current vote into the query results
+    // before using them. If this function is ever reactivated, apply the same
+    // merge fix.
     await client.apps.datastore.put({
       datastore: VoteDatastore.name,
       item: {
