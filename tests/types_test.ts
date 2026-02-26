@@ -120,6 +120,8 @@ Deno.test("types - SlackClient has all required methods", () => {
         put: async () => ({ ok: true }),
         // deno-lint-ignore require-await
         query: async () => ({ ok: true, items: [] }),
+        // deno-lint-ignore require-await
+        delete: async () => ({ ok: true }),
       },
     },
   };
