@@ -15,14 +15,14 @@ Before every commit you **must**:
 The project uses [Deno](https://deno.land/) tasks defined in `deno.jsonc` as the
 canonical way to run checks:
 
-| Command               | Description                                   |
-| --------------------- | --------------------------------------------- |
+| Command               | Description                                                     |
+| --------------------- | --------------------------------------------------------------- |
 | `deno task fmt`       | **RUN THIS BEFORE EVERY COMMIT** — auto-format all source files |
-| `deno task fmt:check` | Check formatting without modifying files      |
-| `deno task lint`      | Run the linter                                |
-| `deno task check`     | Run TypeScript type checking                  |
-| `deno task test`      | Run the test suite                            |
-| `deno task ci`        | Run all of the above checks in sequence       |
+| `deno task fmt:check` | Check formatting without modifying files                        |
+| `deno task lint`      | Run the linter                                                  |
+| `deno task check`     | Run TypeScript type checking                                    |
+| `deno task test`      | Run the test suite                                              |
+| `deno task ci`        | Run all of the above checks in sequence                         |
 
 Run `deno task ci` before opening a pull request to catch formatting, lint, and
 type errors locally.
@@ -44,7 +44,11 @@ Example — let `deno fmt` break long calls:
 
 ```ts
 // Before (too long)
-const result = await client.apiCall("chat.postMessage", { channel, text, blocks });
+const result = await client.apiCall("chat.postMessage", {
+  channel,
+  text,
+  blocks,
+});
 
 // After deno fmt (correct)
 const result = await client.apiCall("chat.postMessage", {
@@ -56,9 +60,9 @@ const result = await client.apiCall("chat.postMessage", {
 
 ## Git Hooks
 
-Branch-local git hooks live in `.githooks/`. The `pre-commit` hook
-auto-formats with `deno fmt`, then fails if any files were modified (so you
-can review and re-stage them), then runs `lint` and `check`.
+Branch-local git hooks live in `.githooks/`. The `pre-commit` hook auto-formats
+with `deno fmt`, then fails if any files were modified (so you can review and
+re-stage them), then runs `lint` and `check`.
 
 Enable the hooks once after cloning:
 
