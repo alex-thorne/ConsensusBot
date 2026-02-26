@@ -573,6 +573,25 @@ export default SlackFunction(
       expression_values: { ":decision_id": decision_id },
     });
 
+    // Merge the just-written vote into the query results to handle DynamoDB
+    // eventual consistency: the newly stored vote may not appear in the query
+    // yet, so we ensure it is always included in the display and finalization
+    // logic.
+    const mergedVotes: VoteRecord[] = [
+      ...(votesResponse.ok
+        ? (votesResponse.items as unknown as VoteRecord[]).filter(
+          (v) => v.user_id !== user_id,
+        )
+        : []),
+      {
+        id: vote_id,
+        decision_id: decision_id,
+        user_id: user_id,
+        vote_type: vote_type as VoteRecord["vote_type"],
+        voted_at: now,
+      },
+    ];
+
     // Get all required voters for this decision
     const votersResponse = await client.apps.datastore.query({
       datastore: VoterDatastore.name,
@@ -582,10 +601,10 @@ export default SlackFunction(
     });
 
     // Update the decision message to show vote progress
-    if (votesResponse.ok && votersResponse.ok) {
-      const voteCount = votesResponse.items.length;
+    if (votersResponse.ok) {
+      const voteCount = mergedVotes.length;
       const requiredCount = votersResponse.items.length;
-      const votes = votesResponse.items as unknown as VoteRecord[];
+      const votes = mergedVotes;
 
       // Get voter names
       const voterNames: string[] = [];
@@ -722,16 +741,9 @@ export default SlackFunction(
         );
       }
     } else {
-      if (!votesResponse.ok) {
-        console.error(
-          `Failed to query votes for decision ${decision_id}: ${votesResponse.error}`,
-        );
-      }
-      if (!votersResponse.ok) {
-        console.error(
-          `Failed to query voters for decision ${decision_id}: ${votersResponse.error}`,
-        );
-      }
+      console.error(
+        `Failed to query voters for decision ${decision_id}: ${votersResponse.error}`,
+      );
     }
 
     // Send confirmation
@@ -752,6 +764,7 @@ export default SlackFunction(
       client,
       decision_id,
       decision.deadline as string,
+      mergedVotes.length,
     );
 
     console.log(`Should finalize decision: ${shouldFinalize}`);
@@ -1000,6 +1013,7 @@ async function checkIfShouldFinalize(
   client: SlackClient,
   decision_id: string,
   deadline: string,
+  knownVoteCount?: number,
 ): Promise<boolean> {
   // Check deadline
   if (isDeadlinePassed(deadline)) {
@@ -1014,18 +1028,30 @@ async function checkIfShouldFinalize(
     expression_values: { ":decision_id": decision_id },
   });
 
-  const votes = await client.apps.datastore.query({
-    datastore: VoteDatastore.name,
-    expression: "#decision_id = :decision_id",
-    expression_attributes: { "#decision_id": "decision_id" },
-    expression_values: { ":decision_id": decision_id },
-  });
-
-  if (voters.ok && votes.ok) {
-    return voters.items.length === votes.items.length;
+  if (!voters.ok) {
+    return false;
   }
 
-  return false;
+  // Use the provided vote count when available to avoid re-querying a
+  // datastore that may not yet reflect the just-written vote (eventual
+  // consistency). Fall back to a fresh query when no count is supplied.
+  let voteCount: number;
+  if (knownVoteCount !== undefined) {
+    voteCount = knownVoteCount;
+  } else {
+    const votes = await client.apps.datastore.query({
+      datastore: VoteDatastore.name,
+      expression: "#decision_id = :decision_id",
+      expression_attributes: { "#decision_id": "decision_id" },
+      expression_values: { ":decision_id": decision_id },
+    });
+    if (!votes.ok) {
+      return false;
+    }
+    voteCount = votes.items.length;
+  }
+
+  return voters.items.length === voteCount;
 }
 
 /**

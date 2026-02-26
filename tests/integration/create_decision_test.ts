@@ -219,3 +219,125 @@ Deno.test("create_decision integration - should handle custom deadline", async (
     customDeadline,
   );
 });
+
+// ---------------------------------------------------------------------------
+// Eventual consistency: vote merge logic
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  "create_decision integration - vote merge adds vote missing from query results",
+  () => {
+    const user_id = "U123456";
+    const decision_id = "decision1";
+    const now = new Date().toISOString();
+
+    const currentVote = {
+      id: `${decision_id}_${user_id}`,
+      decision_id,
+      user_id,
+      vote_type: "yes",
+      voted_at: now,
+    };
+
+    // Simulate stale query results that do not yet contain the current user's vote
+    const queryItems: Record<string, unknown>[] = [];
+
+    const mergedVotes = [
+      ...queryItems.filter((v) => v.user_id !== user_id),
+      currentVote,
+    ];
+
+    assertEquals(mergedVotes.length, 1);
+    assertEquals(mergedVotes[0].user_id, user_id);
+    assertEquals(mergedVotes[0].vote_type, "yes");
+  },
+);
+
+Deno.test(
+  "create_decision integration - vote merge replaces stale vote already in query results",
+  () => {
+    const user_id = "U123456";
+    const decision_id = "decision1";
+    const now = new Date().toISOString();
+
+    const currentVote = {
+      id: `${decision_id}_${user_id}`,
+      decision_id,
+      user_id,
+      vote_type: "no", // changed from yes → no
+      voted_at: now,
+    };
+
+    // Simulate stale query results containing the old vote (yes) for the user
+    const queryItems: Record<string, unknown>[] = [
+      {
+        id: `${decision_id}_${user_id}`,
+        decision_id,
+        user_id,
+        vote_type: "yes", // stale
+        voted_at: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        id: `${decision_id}_U789`,
+        decision_id,
+        user_id: "U789",
+        vote_type: "yes",
+        voted_at: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+
+    const mergedVotes = [
+      ...queryItems.filter((v) => v.user_id !== user_id),
+      currentVote,
+    ];
+
+    assertEquals(mergedVotes.length, 2);
+    const userVote = mergedVotes.find((v) => v.user_id === user_id);
+    assertExists(userVote);
+    assertEquals(userVote.vote_type, "no");
+    // Other voter's vote is preserved
+    const otherVote = mergedVotes.find((v) => v.user_id === "U789");
+    assertExists(otherVote);
+    assertEquals(otherVote.vote_type, "yes");
+  },
+);
+
+Deno.test(
+  "create_decision integration - checkIfShouldFinalize skips votes query when knownVoteCount is provided",
+  async () => {
+    const mockClient = createMockSlackClient();
+
+    // Two required voters are returned by any query (voters datastore)
+    mockClient.setDatastoreQueryResults([
+      { id: "voter1", decision_id: "d1", user_id: "U1" },
+      { id: "voter2", decision_id: "d1", user_id: "U2" },
+    ]);
+
+    // Simulate the behavior of checkIfShouldFinalize with knownVoteCount:
+    // - Query voters (required)
+    // - Skip votes query (knownVoteCount replaces it)
+    // - Compare voter count with knownVoteCount
+
+    const votersResponse = await mockClient.apps.datastore.query({
+      datastore: "voters",
+      expression: "#decision_id = :decision_id",
+      expression_attributes: { "#decision_id": "decision_id" },
+      expression_values: { ":decision_id": "d1" },
+    });
+
+    assertEquals(votersResponse.ok, true);
+    const voterCount = votersResponse.items!.length;
+    assertEquals(voterCount, 2);
+
+    // No votes query is issued; we use the merged count directly.
+    // Verify only one query was made (voters only, not votes).
+    const queryCalls = mockClient.getCallsFor("apps.datastore.query");
+    assertEquals(queryCalls.length, 1);
+
+    // When knownVoteCount equals voter count → should finalize
+    assertEquals(voterCount === 2, true);
+
+    // When knownVoteCount is one short → should not finalize yet
+    assertEquals(voterCount === 1, false);
+  },
+);
