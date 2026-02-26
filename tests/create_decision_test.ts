@@ -30,6 +30,10 @@ class MockSlackClient implements SlackClient {
       }) => {
         return { ok: true, items: [] };
       },
+      // deno-lint-ignore require-await
+      delete: async (_params: { datastore: string; id: string }) => {
+        return { ok: true };
+      },
     },
   };
 
@@ -65,6 +69,10 @@ class MockSlackClient implements SlackClient {
       text: string;
       blocks?: SlackBlock[];
     }) => {
+      return { ok: true };
+    },
+    // deno-lint-ignore require-await
+    delete: async (_params: { channel: string; ts: string }) => {
       return { ok: true };
     },
   };
