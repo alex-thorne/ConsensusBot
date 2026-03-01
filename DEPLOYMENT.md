@@ -203,8 +203,8 @@ For production deployments:
    ```bash
    git checkout main
    git pull
-   git tag v1.x.x
-   git push origin v1.x.x
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
    ```
 5. Deploy: `slack deploy`
 
