@@ -59,10 +59,12 @@ const decisionForm = CreateDecisionWorkflow.addStep(
         {
           name: "required_usergroups",
           title: "Required User Groups (Optional)",
-          type: Schema.types.string,
+          type: Schema.types.array,
+          items: {
+            type: Schema.slack.types.usergroup_id,
+          },
           description:
-            "Enter usergroup mentions (e.g. <!subteam^S123ABC|eng>), handles (e.g. @eng), or IDs, separated by commas or spaces",
-          long: true,
+            "Select user groups whose members must vote on this decision",
         },
         {
           name: "include_channel_members",
