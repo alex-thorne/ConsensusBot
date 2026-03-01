@@ -1,11 +1,11 @@
 name: Slack Manifest Validation
 
-# Validate Slack manifest on pull requests and pushes to development branch
+# Validate Slack manifest on pull requests and pushes to develop branch
 on:
   push:
-    branches: [development]
+    branches: [develop]
   pull_request:
-    branches: [development]
+    branches: [develop]
 
 jobs:
   validate:

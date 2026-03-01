@@ -31,6 +31,27 @@ cd ConsensusBot
 slack create
 ```
 
+## Branching Workflow
+
+```
+feature/my-feature  ──PR──▶  develop  ──PR──▶  main
+                              │                  │
+                         slack run           slack deploy
+                        (shakedown)         (production)
+```
+
+1. Create a feature branch from `develop`
+2. Make changes and open a PR targeting `develop`
+3. After CI passes and review, merge to `develop`
+4. Test locally: `git checkout develop && slack run`
+5. When ready for release, open a PR from `develop` → `main`
+6. After merging to `main`, tag the release and deploy:
+   ```bash
+   git tag vX.Y.Z # e.g., v1.0.0
+   git push origin vX.Y.Z
+   slack deploy
+   ```
+
 ## Local Development
 
 ### Running Locally

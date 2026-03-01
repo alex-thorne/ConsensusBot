@@ -1,11 +1,11 @@
 name: Unit Tests
 
-# Run unit tests on pull requests and pushes to development branch
+# Run unit tests on pull requests and pushes to develop branch
 on:
   push:
-    branches: [development]
+    branches: [develop]
   pull_request:
-    branches: [development]
+    branches: [develop]
 
 jobs:
   test:

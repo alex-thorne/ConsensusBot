@@ -243,6 +243,16 @@ Every weekday at 9:00 AM UTC, the bot automatically:
 
 ## Development
 
+### Branching Strategy
+
+The project uses a `develop` → `main` branching model:
+
+- **`develop`**: Integration branch for testing (`slack run`)
+- **`main`**: Production branch for deployment (`slack deploy`)
+- **Feature branches**: Created from `develop`, merged back via PR
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the complete workflow.
+
 ### Local Development
 
 Run the app locally for testing:

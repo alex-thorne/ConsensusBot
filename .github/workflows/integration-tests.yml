@@ -1,11 +1,11 @@
 name: Integration Tests
 
-# Run integration tests on pull requests and pushes to development branch
+# Run integration tests on pull requests and pushes to develop branch
 on:
   push:
-    branches: [development]
+    branches: [develop]
   pull_request:
-    branches: [development]
+    branches: [develop]
 
 jobs:
   integration-tests:

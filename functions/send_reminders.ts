@@ -3,6 +3,7 @@ import DecisionDatastore from "../datastores/decisions.ts";
 import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
+import { VERSION } from "../utils/version.ts";
 import { SlackClient } from "../types/slack_types.ts";
 import {
   DecisionRecord,
@@ -152,7 +153,8 @@ async function sendReminderDM(
           elements: [
             {
               type: "mrkdwn",
-              text: `This is an automated reminder from ConsensusBot`,
+              text:
+                `This is an automated reminder from ConsensusBot v${VERSION}`,
             },
           ],
         },
