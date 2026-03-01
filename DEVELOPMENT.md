@@ -47,8 +47,8 @@ feature/my-feature  ──PR──▶  develop  ──PR──▶  main
 5. When ready for release, open a PR from `develop` → `main`
 6. After merging to `main`, tag the release and deploy:
    ```bash
-   git tag v1.x.x
-   git push origin v1.x.x
+   git tag vX.Y.Z # e.g., v1.0.0
+   git push origin vX.Y.Z
    slack deploy
    ```
 
