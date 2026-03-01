@@ -1,6 +1,6 @@
 name: Integration Tests
 
-# Run integration tests on pull requests and pushes to development branch
+# Run integration tests on pull requests and pushes to develop branch
 on:
   push:
     branches: [develop]
