@@ -194,6 +194,20 @@ For production deployments:
 4. **Test thoroughly** in a development workspace first
 5. **Document any custom configurations** for your team
 
+### Release Workflow
+
+1. Ensure all changes are merged to `develop` and tested with `slack run`
+2. Update `utils/version.ts` with the new version number
+3. Open a PR from `develop` → `main`
+4. After merge, tag the release:
+   ```bash
+   git checkout main
+   git pull
+   git tag v1.x.x
+   git push origin v1.x.x
+   ```
+5. Deploy: `slack deploy`
+
 ### Cost Considerations
 
 Monitor your usage to stay within budget:

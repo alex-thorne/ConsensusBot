@@ -4,6 +4,7 @@ import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { getDefaultDeadline } from "../utils/date_utils.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
+import { VERSION } from "../utils/version.ts";
 import {
   SlackBlock,
   SlackClient,
@@ -381,7 +382,8 @@ export default SlackFunction(
           elements: [
             {
               type: "mrkdwn",
-              text: `Created by <@${inputs.creator_id}> | Vote by ${deadline}`,
+              text:
+                `Created by <@${inputs.creator_id}> | Vote by ${deadline} | ConsensusBot v${VERSION}`,
             },
           ],
         },
@@ -728,7 +730,7 @@ export default SlackFunction(
               {
                 type: "mrkdwn",
                 text:
-                  `Created by <@${decision.creator_id}> | Vote by ${decision.deadline}`,
+                  `Created by <@${decision.creator_id}> | Vote by ${decision.deadline} | ConsensusBot v${VERSION}`,
               },
             ],
           },
@@ -874,7 +876,7 @@ export default SlackFunction(
             {
               type: "mrkdwn",
               text:
-                `Created by <@${decision.creator_id}> | Cancelled at ${now}`,
+                `Created by <@${decision.creator_id}> | Cancelled at ${now} | ConsensusBot v${VERSION}`,
             },
           ],
         },
@@ -1158,6 +1160,15 @@ async function finalizeDecision(
           {
             type: "mrkdwn",
             text: `*Total:* ${outcome.voteCounts.total}`,
+          },
+        ],
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `ConsensusBot v${VERSION}`,
           },
         ],
       },

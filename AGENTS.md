@@ -10,6 +10,38 @@ Before every commit you **must**:
    pass.
 4. Commit **only after** all checks pass.
 
+## Branching Strategy
+
+This project uses a **develop → main** branching model:
+
+| Branch    | Purpose                                                    |
+| --------- | ---------------------------------------------------------- |
+| `main`    | Production — deployed via `slack deploy`                   |
+| `develop` | Integration — tested locally via `slack run`               |
+| feature/* | Feature branches — branched from and merged into `develop` |
+
+### Rules
+
+1. **Never push directly to `main`.** All changes reach `main` via a PR from
+   `develop`.
+2. **Feature branches** are created from `develop` and merged back into
+   `develop` via PR.
+3. After shakedown testing on `develop` (using `slack run`), open a PR from
+   `develop` → `main`.
+4. Only the repository owner (@alex-thorne) can merge PRs into `main`.
+5. **Releases** are tagged on `main` after merging from `develop`. Update
+   `utils/version.ts` in the `develop` → `main` PR.
+
+### Version Tagging
+
+- The app version is stored in `utils/version.ts` and follows semantic
+  versioning (`MAJOR.MINOR.PATCH`).
+- The version appears in all Slack messages as a footnote.
+- When preparing a release PR (`develop` → `main`), bump the version in
+  `utils/version.ts`.
+- After merging to `main`, create a git tag:
+  `git tag v1.x.x && git push origin v1.x.x`.
+
 ## CI Commands
 
 The project uses [Deno](https://deno.land/) tasks defined in `deno.jsonc` as the

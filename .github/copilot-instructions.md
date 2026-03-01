@@ -6,6 +6,22 @@
 - **Task runner**: `deno task <name>` (tasks defined in `deno.jsonc`)
 - **Language**: TypeScript
 
+## Branching Strategy
+
+- **`main`** = production. Deployed with `slack deploy`. Only @alex-thorne
+  merges to `main`.
+- **`develop`** = integration/testing. Tested locally with `slack run`. PRs
+  target `develop` by default.
+- **Feature branches** are created from `develop` and merged back into
+  `develop`.
+- The app version lives in `utils/version.ts` (semver). Bump it in `develop` →
+  `main` PRs.
+- After merging to `main`, tag the release:
+  `git tag vX.Y.Z && git push origin vX.Y.Z`.
+
+When creating PRs, **always target `develop`** unless explicitly told to target
+`main`.
+
 ## File Structure
 
 ```

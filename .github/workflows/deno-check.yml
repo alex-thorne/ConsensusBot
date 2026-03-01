@@ -3,9 +3,9 @@ name: Deno Type Check
 # Run TypeScript type checking on pull requests and pushes to development branch
 on:
   push:
-    branches: [development]
+    branches: [develop]
   pull_request:
-    branches: [development]
+    branches: [develop]
 
 jobs:
   typecheck:
