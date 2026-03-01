@@ -40,7 +40,7 @@ This project uses a **develop → main** branching model:
 - When preparing a release PR (`develop` → `main`), bump the version in
   `utils/version.ts`.
 - After merging to `main`, create a git tag:
-  `git tag v1.x.x && git push origin v1.x.x`.
+  `git tag vX.Y.Z && git push origin vX.Y.Z`.
 
 ## CI Commands
 
