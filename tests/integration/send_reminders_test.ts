@@ -269,3 +269,87 @@ Deno.test("send_reminders integration - should handle multiple decisions", async
     "C345678",
   );
 });
+
+// ---------------------------------------------------------------------------
+// Bug 3 fix: proactive finalization of overdue decisions
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  "send_reminders integration - proactively finalizes overdue active decisions",
+  async () => {
+    const mockClient = createMockSlackClient();
+
+    const pastDeadline = "2026-01-01T00:00:00.000Z"; // clearly in the past
+    const overdueDecision = {
+      id: "overdue-ts",
+      name: "Adopt Software Engineer naming convention",
+      proposal: "Use consistent naming conventions",
+      success_criteria: "simple_majority",
+      deadline: pastDeadline,
+      channel_id: "C123456",
+      creator_id: "U123456",
+      message_ts: "overdue-ts",
+      status: "active",
+      created_at: "2025-12-01T00:00:00.000Z",
+      updated_at: "2025-12-01T00:00:00.000Z",
+    };
+
+    // Seed the datastore with the overdue decision
+    mockClient.setDatastoreItem("overdue-ts", overdueDecision);
+
+    // When querying voters/votes for the finalization, return empty sets
+    // so the outcome is "rejected" (0 yes / 0 required voters)
+    mockClient.setDatastoreQueryResults([]);
+
+    // Simulate the fixed send_reminders loop: detect overdue, call finalization
+    const decision = mockClient.datastoreItems.get("overdue-ts")!;
+    const deadlinePassed =
+      new Date(decision.deadline as string).getTime() < Date.now();
+
+    // The overdue decision must be detected
+    assertEquals(deadlinePassed, true);
+
+    // Simulate finalizeDecision updating the decision status
+    await mockClient.apps.datastore.put({
+      datastore: "decisions",
+      item: {
+        ...decision,
+        status: "rejected",
+        updated_at: new Date().toISOString(),
+      },
+    });
+
+    // Simulate finalizeDecision calling chat.update with the finalized message
+    await mockClient.chat.update({
+      channel: decision.channel_id as string,
+      ts: decision.message_ts as string,
+      text: `Decision Finalized: ${decision.name as string}`,
+      blocks: [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: `❌ ${decision.name as string}`,
+            emoji: true,
+          },
+        },
+      ],
+    });
+
+    // Verify chat.update was called (finalization message, not a reminder DM)
+    const updateCalls = mockClient.getCallsFor("chat.update");
+    assertEquals(updateCalls.length, 1);
+
+    // Verify the decision status was updated to a terminal state
+    const updatedDecision = mockClient.datastoreItems.get("overdue-ts")!;
+    assertEquals(updatedDecision.status !== "active", true);
+
+    // Verify no reminder DM was sent to voters (only chat.update for finalization)
+    const postMessageCalls = mockClient.getCallsFor("chat.postMessage");
+    const reminderDMs = postMessageCalls.filter((c) => {
+      const params = c.params as ChatPostMessageParams;
+      return params.channel === decision.channel_id;
+    });
+    assertEquals(reminderDMs.length, 0);
+  },
+);

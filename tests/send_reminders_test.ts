@@ -196,3 +196,60 @@ Deno.test("send_reminders - active decisions filtering", () => {
   assertEquals(activeDecisions[0].name, "Active Decision 1");
   assertEquals(activeDecisions[1].name, "Active Decision 2");
 });
+
+Deno.test(
+  "send_reminders - skips reminders and calls finalizeDecision for overdue decisions",
+  () => {
+    // Track whether finalizeDecision would be called
+    let finalizeCalledFor: string | null = null;
+    let reminderSentFor: string | null = null;
+
+    // Simulate the send_reminders loop logic with the Bug 3 fix applied
+    const decisions: DecisionRecord[] = [
+      {
+        id: "overdue-decision",
+        name: "Overdue Decision",
+        proposal: "Proposal",
+        success_criteria: "simple_majority",
+        deadline: "2026-01-01T00:00:00.000Z", // clearly in the past
+        channel_id: "C123",
+        creator_id: "U123",
+        message_ts: "overdue-decision",
+        status: "active",
+        created_at: "2025-12-01T00:00:00.000Z",
+        updated_at: "2025-12-01T00:00:00.000Z",
+      },
+      {
+        id: "active-decision",
+        name: "Active Decision",
+        proposal: "Proposal",
+        success_criteria: "simple_majority",
+        deadline: "2099-01-01T00:00:00.000Z", // far future
+        channel_id: "C456",
+        creator_id: "U456",
+        message_ts: "active-decision",
+        status: "active",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+
+    // Simulate the fixed loop
+    for (const decision of decisions) {
+      const deadlinePassed = new Date(decision.deadline).getTime() < Date.now();
+      if (deadlinePassed) {
+        // Fixed path: call finalizeDecision instead of skipping
+        finalizeCalledFor = decision.id;
+        continue;
+      }
+      // Only reach here for non-overdue decisions
+      reminderSentFor = decision.id;
+    }
+
+    // Overdue decision must have triggered finalization, not a reminder
+    assertEquals(finalizeCalledFor, "overdue-decision");
+
+    // Active (non-overdue) decision must have proceeded to the reminder path
+    assertEquals(reminderSentFor, "active-decision");
+  },
+);

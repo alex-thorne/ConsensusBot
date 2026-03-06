@@ -3,6 +3,7 @@ import DecisionDatastore from "../datastores/decisions.ts";
 import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { isDeadlinePassed } from "../utils/date_utils.ts";
+import { finalizeDecision } from "../utils/finalization.ts";
 import { SlackClient } from "../types/slack_types.ts";
 import {
   DecisionRecord,
@@ -55,14 +56,29 @@ export default SlackFunction(
 
     // Process each active decision
     for (const decision of activeDecisions) {
-      // Skip decisions with passed deadlines
-      // Note: These decisions will be auto-finalized when any voter clicks a vote button,
-      // as the button handler checks for expired deadlines
+      // Proactively finalize decisions whose deadline has already passed
+      // instead of waiting for a vote button click.
       if (isDeadlinePassed(decision.deadline as string)) {
+        const decisionRecord = decision as DecisionRecord;
         console.log(
-          `Skipping decision ${decision.id} - deadline has passed. ` +
-            `Decision will be finalized when a vote button is clicked.`,
+          `Proactively finalizing overdue decision ${decisionRecord.id} ("${decisionRecord.name}") - deadline ${decisionRecord.deadline} has passed`,
         );
+        try {
+          await finalizeDecision(
+            client,
+            decisionRecord,
+            decisionRecord.channel_id,
+            decisionRecord.message_ts,
+            decisionRecord.id,
+          );
+          console.log(
+            `Overdue decision finalized: decision_id=${decisionRecord.id}`,
+          );
+        } catch (error) {
+          console.error(
+            `Failed to finalize overdue decision ${decisionRecord.id}: ${error}`,
+          );
+        }
         continue;
       }
 

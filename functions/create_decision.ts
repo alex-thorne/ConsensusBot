@@ -3,13 +3,10 @@ import DecisionDatastore from "../datastores/decisions.ts";
 import VoteDatastore from "../datastores/votes.ts";
 import VoterDatastore from "../datastores/voters.ts";
 import { getDefaultDeadline } from "../utils/date_utils.ts";
-import { isDeadlinePassed } from "../utils/date_utils.ts";
-import { SlackBlock, SlackClient } from "../types/slack_types.ts";
-import { calculateDecisionOutcome } from "../utils/decision_logic.ts";
 import {
-  formatADRForSlack,
-  generateADRMarkdown,
-} from "../utils/adr_generator.ts";
+  checkIfShouldFinalize,
+  finalizeDecision,
+} from "../utils/finalization.ts";
 import { DecisionRecord, VoteRecord } from "../types/decision_types.ts";
 
 /**
@@ -369,24 +366,134 @@ export default SlackFunction(
     const decision_id = message.ts as string;
     const message_ts = message.ts as string;
 
-    // Update button values with actual decision_id
-    await client.chat.update({
+    // Update button values with actual decision_id by reconstructing the
+    // blocks array from scratch. We cannot rely on message.message?.blocks
+    // because the Slack API frequently omits the full message body from the
+    // postMessage response, causing the optional chain to silently return
+    // undefined and the update to be sent without a blocks field.
+    const stampResult = await client.chat.update({
       channel: inputs.channel_id,
       ts: message_ts,
       text: `New Decision: ${inputs.decision_name}`,
-      blocks: message.message?.blocks?.map((block: SlackBlock) => {
-        if (block.type === "actions") {
-          return {
-            ...block,
-            elements: block.elements?.map((element) => ({
-              ...element,
+      blocks: [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: `🗳️ ${inputs.decision_name}`,
+            emoji: true,
+          },
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*Proposal:*\n${inputs.proposal}`,
+          },
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Success Criteria:*\n${criteriaDisplay}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Deadline:*\n${deadline}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Required Voters:*\n${votersMentions}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Status:*\n🟢 Active`,
+            },
+          ],
+        },
+        {
+          type: "divider",
+        },
+        {
+          type: "actions",
+          block_id: "voting_actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "✅ Yes",
+                emoji: true,
+              },
+              style: "primary",
+              action_id: "vote_yes",
               value: decision_id,
-            })),
-          };
-        }
-        return block;
-      }),
+            },
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "❌ No",
+                emoji: true,
+              },
+              style: "danger",
+              action_id: "vote_no",
+              value: decision_id,
+            },
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "⚪ Abstain",
+                emoji: true,
+              },
+              action_id: "vote_abstain",
+              value: decision_id,
+            },
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "🚫 Cancel",
+                emoji: true,
+              },
+              action_id: "decision_cancel",
+              value: decision_id,
+            },
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "🗑️ Delete",
+                emoji: true,
+              },
+              action_id: "decision_delete",
+              value: decision_id,
+            },
+          ],
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `Created by <@${inputs.creator_id}> | Vote by ${deadline}`,
+            },
+          ],
+        },
+      ],
     });
+
+    if (!stampResult.ok) {
+      console.error(
+        `Failed to stamp button values with decision_id=${decision_id}: ${stampResult.error}`,
+      );
+    } else {
+      console.log(
+        `Button values stamped with decision_id=${decision_id}`,
+      );
+    }
 
     // Pin the message
     await client.pins.add({
@@ -480,6 +587,9 @@ export default SlackFunction(
 
     // Check if decision is still active
     if (decision.status !== "active") {
+      console.log(
+        `Vote rejected: decision_id=${decision_id} has status=${decision.status} (expected "active")`,
+      );
       await client.chat.postEphemeral({
         channel: channel_id,
         user: user_id,
@@ -495,6 +605,9 @@ export default SlackFunction(
     });
 
     if (!getVoter.ok || !getVoter.item) {
+      console.log(
+        `Vote rejected: user_id=${user_id} is not a required voter for decision_id=${decision_id}`,
+      );
       await client.chat.postEphemeral({
         channel: channel_id,
         user: user_id,
@@ -534,7 +647,7 @@ export default SlackFunction(
     }
 
     console.log(
-      `Vote recorded successfully: user_id=${user_id}, vote_type=${vote_type}, decision_id=${decision_id}`,
+      `Vote recorded: decision_id=${decision_id}, user_id=${user_id}, vote_type=${vote_type}`,
     );
 
     // Get all votes for this decision to update the message
@@ -977,193 +1090,3 @@ export default SlackFunction(
     });
   },
 );
-
-/**
- * Check if decision should be finalized
- */
-async function checkIfShouldFinalize(
-  client: SlackClient,
-  decision_id: string,
-  deadline: string,
-  knownVoteCount?: number,
-): Promise<boolean> {
-  // Check deadline
-  if (isDeadlinePassed(deadline)) {
-    return true;
-  }
-
-  // Check if all required voters have voted
-  const voters = await client.apps.datastore.query({
-    datastore: VoterDatastore.name,
-    expression: "#decision_id = :decision_id",
-    expression_attributes: { "#decision_id": "decision_id" },
-    expression_values: { ":decision_id": decision_id },
-  });
-
-  if (!voters.ok) {
-    return false;
-  }
-
-  // Use the provided vote count when available to avoid re-querying a
-  // datastore that may not yet reflect the just-written vote (eventual
-  // consistency). Fall back to a fresh query when no count is supplied.
-  let voteCount: number;
-  if (knownVoteCount !== undefined) {
-    voteCount = knownVoteCount;
-  } else {
-    const votes = await client.apps.datastore.query({
-      datastore: VoteDatastore.name,
-      expression: "#decision_id = :decision_id",
-      expression_attributes: { "#decision_id": "decision_id" },
-      expression_values: { ":decision_id": decision_id },
-    });
-    if (!votes.ok) {
-      return false;
-    }
-    voteCount = votes.items.length;
-  }
-
-  return voters.items.length === voteCount;
-}
-
-/**
- * Finalize a decision and generate ADR
- */
-async function finalizeDecision(
-  client: SlackClient,
-  decision: DecisionRecord,
-  channel_id: string,
-  message_ts: string,
-  _decision_id: string,
-) {
-  // Get all votes
-  const votesResponse = await client.apps.datastore.query({
-    datastore: VoteDatastore.name,
-    expression: "#decision_id = :decision_id",
-    expression_attributes: { "#decision_id": "decision_id" },
-    expression_values: { ":decision_id": decision.id },
-  });
-
-  if (!votesResponse.ok) {
-    console.error("Failed to get votes for finalization");
-    return;
-  }
-
-  const votes = votesResponse.items as unknown as VoteRecord[];
-
-  // Get required voters count
-  const votersResponse = await client.apps.datastore.query({
-    datastore: VoterDatastore.name,
-    expression: "#decision_id = :decision_id",
-    expression_attributes: { "#decision_id": "decision_id" },
-    expression_values: { ":decision_id": decision.id },
-  });
-
-  const requiredVotersCount = votersResponse.ok
-    ? votersResponse.items.length
-    : 0;
-
-  // Calculate outcome
-  const outcome = calculateDecisionOutcome(
-    votes,
-    decision.success_criteria,
-    requiredVotersCount,
-  );
-
-  // Update decision status
-  const newStatus = outcome.passed ? "approved" : "rejected";
-  await client.apps.datastore.put({
-    datastore: DecisionDatastore.name,
-    item: {
-      ...decision,
-      status: newStatus,
-      updated_at: new Date().toISOString(),
-    },
-  });
-
-  // Unpin message
-  await client.pins.remove({
-    channel: channel_id,
-    timestamp: message_ts,
-  });
-
-  // Update message with final result
-  const statusEmoji = outcome.passed ? "✅" : "❌";
-  const statusText = outcome.passed ? "APPROVED" : "REJECTED";
-
-  await client.chat.update({
-    channel: channel_id,
-    ts: message_ts,
-    text: `Decision Finalized: ${decision.name}`,
-    blocks: [
-      {
-        type: "header",
-        text: {
-          type: "plain_text",
-          text: `${statusEmoji} ${decision.name}`,
-          emoji: true,
-        },
-      },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text:
-            `*Status:* ${statusEmoji} ${statusText}\n\n*Reason:* ${outcome.reason}`,
-        },
-      },
-      {
-        type: "section",
-        fields: [
-          {
-            type: "mrkdwn",
-            text: `*Yes:* ${outcome.voteCounts.yes}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*No:* ${outcome.voteCounts.no}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Abstain:* ${outcome.voteCounts.abstain}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Total:* ${outcome.voteCounts.total}`,
-          },
-        ],
-      },
-    ],
-  });
-
-  // Get user names for ADR
-  const userMap = new Map<string, string>();
-  for (const vote of votes) {
-    const userInfo = await client.users.info({ user: vote.user_id as string });
-    if (userInfo.ok && userInfo.user) {
-      userMap.set(
-        vote.user_id as string,
-        userInfo.user.real_name || userInfo.user.name || "Unknown User",
-      );
-    }
-  }
-
-  // Generate and post ADR
-  const adrMarkdown = generateADRMarkdown(
-    decision,
-    votes,
-    outcome,
-    userMap,
-  );
-  const adrBlocks = formatADRForSlack(adrMarkdown);
-
-  await client.chat.postMessage({
-    channel: channel_id,
-    thread_ts: message_ts,
-    blocks: adrBlocks,
-    text: "ADR Generated - See thread for details",
-  });
-
-  // Note: The workflow will remain running with completed: false
-  // This is expected behavior for functions with block action handlers
-}

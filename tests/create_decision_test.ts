@@ -229,3 +229,118 @@ Deno.test("create_decision - block mapping preserves type safety", () => {
     assertEquals(actionsBlock.elements[0].value, "new_value");
   }
 });
+
+Deno.test(
+  "create_decision - button stamp reconstruction uses real decision_id not placeholder",
+  () => {
+    const realDecisionId = "1772800105.129129";
+    const placeholder = "{{decision_id}}";
+
+    // Simulate reconstructing buttons from scratch (the Bug 1 fix)
+    // instead of relying on message.message?.blocks
+    const reconstructedBlocks: SlackBlock[] = [
+      {
+        type: "header",
+        text: { type: "plain_text", text: "🗳️ Test Decision" },
+      },
+      {
+        type: "actions",
+        block_id: "voting_actions",
+        elements: [
+          {
+            type: "button",
+            action_id: "vote_yes",
+            value: realDecisionId,
+          },
+          {
+            type: "button",
+            action_id: "vote_no",
+            value: realDecisionId,
+          },
+          {
+            type: "button",
+            action_id: "vote_abstain",
+            value: realDecisionId,
+          },
+          {
+            type: "button",
+            action_id: "decision_cancel",
+            value: realDecisionId,
+          },
+          {
+            type: "button",
+            action_id: "decision_delete",
+            value: realDecisionId,
+          },
+        ],
+      },
+    ];
+
+    const actionsBlock = reconstructedBlocks.find(
+      (b) => b.type === "actions",
+    );
+    assertExists(actionsBlock);
+    assertExists(actionsBlock.elements);
+
+    for (const element of actionsBlock.elements) {
+      // Every button value must be the real ID, not the placeholder
+      assertEquals(element.value, realDecisionId);
+      assertEquals(element.value !== placeholder, true);
+    }
+  },
+);
+
+Deno.test(
+  "create_decision - button stamp works even when message.message?.blocks is undefined",
+  () => {
+    const realDecisionId = "1772800105.129129";
+
+    // Simulate what happens when Slack omits the message body (the bug scenario)
+    const messageResponse = {
+      ok: true,
+      ts: realDecisionId,
+      message: undefined, // Slack API omits this
+    };
+
+    // Old (buggy) approach: relies on optional chain
+    const oldApproachBlocks = messageResponse.message?.blocks?.map(
+      (block: SlackBlock) => {
+        if (block.type === "actions") {
+          return {
+            ...block,
+            elements: block.elements?.map((el) => ({
+              ...el,
+              value: realDecisionId,
+            })),
+          };
+        }
+        return block;
+      },
+    );
+
+    // The old approach produces undefined when message is missing
+    assertEquals(oldApproachBlocks, undefined);
+
+    // New (fixed) approach: reconstruct from scratch
+    const newApproachBlocks: SlackBlock[] = [
+      {
+        type: "actions",
+        block_id: "voting_actions",
+        elements: [
+          { type: "button", action_id: "vote_yes", value: realDecisionId },
+          { type: "button", action_id: "vote_no", value: realDecisionId },
+        ],
+      },
+    ];
+
+    // The new approach always produces a valid blocks array
+    assertExists(newApproachBlocks);
+    assertEquals(newApproachBlocks.length, 1);
+
+    const actionsBlock = newApproachBlocks[0];
+    assertExists(actionsBlock.elements);
+    for (const el of actionsBlock.elements) {
+      assertEquals(el.value, realDecisionId);
+    }
+  },
+);

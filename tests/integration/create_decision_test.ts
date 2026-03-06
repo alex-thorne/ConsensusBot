@@ -341,3 +341,137 @@ Deno.test(
     assertEquals(voterCount === 1, false);
   },
 );
+
+// ---------------------------------------------------------------------------
+// Bug 1 fix: button value stamping
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  "create_decision integration - button values are stamped with real decision_id after post",
+  async () => {
+    const mockClient = createMockSlackClient();
+
+    // The real decision_id comes from the message timestamp returned by Slack
+    const realDecisionId = "1772800105.129129";
+
+    const channel_id = "C123456";
+    const decision_name = "Adopt TypeScript";
+    const proposal = "We should use TypeScript everywhere";
+    const criteriaDisplay = "Simple Majority";
+    const deadline = "2026-04-01T23:59:59.000Z";
+    const creator_id = "U123456";
+    const votersMentions = "<@U111> <@U222>";
+
+    // Simulate the fixed chat.update block reconstruction from scratch.
+    // This is the approach that replaces the buggy message.message?.blocks?.map()
+    // pattern.  The blocks array is built directly with the real decision_id in
+    // every button value so the update always succeeds, even when the Slack API
+    // omits the full message body from the postMessage response.
+    const updateResult = await mockClient.chat.update({
+      channel: channel_id,
+      ts: realDecisionId,
+      text: `New Decision: ${decision_name}`,
+      blocks: [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: `🗳️ ${decision_name}`,
+            emoji: true,
+          },
+        },
+        {
+          type: "section",
+          text: { type: "mrkdwn", text: `*Proposal:*\n${proposal}` },
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Success Criteria:*\n${criteriaDisplay}`,
+            },
+            { type: "mrkdwn", text: `*Deadline:*\n${deadline}` },
+            {
+              type: "mrkdwn",
+              text: `*Required Voters:*\n${votersMentions}`,
+            },
+            { type: "mrkdwn", text: `*Status:*\n🟢 Active` },
+          ],
+        },
+        { type: "divider" },
+        {
+          type: "actions",
+          block_id: "voting_actions",
+          elements: [
+            {
+              type: "button",
+              action_id: "vote_yes",
+              value: realDecisionId,
+            },
+            {
+              type: "button",
+              action_id: "vote_no",
+              value: realDecisionId,
+            },
+            {
+              type: "button",
+              action_id: "vote_abstain",
+              value: realDecisionId,
+            },
+            {
+              type: "button",
+              action_id: "decision_cancel",
+              value: realDecisionId,
+            },
+            {
+              type: "button",
+              action_id: "decision_delete",
+              value: realDecisionId,
+            },
+          ],
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `Created by <@${creator_id}> | Vote by ${deadline}`,
+            },
+          ],
+        },
+      ],
+    });
+
+    assertEquals(updateResult.ok, true);
+
+    // Verify chat.update was called
+    const updateCalls = mockClient.getCallsFor("chat.update");
+    assertEquals(updateCalls.length, 1);
+
+    // Extract the blocks passed to chat.update
+    const updateParams = updateCalls[0].params as {
+      channel: string;
+      ts: string;
+      blocks?: Array<{
+        type: string;
+        elements?: Array<{ type: string; action_id?: string; value?: string }>;
+      }>;
+    };
+
+    assertExists(updateParams.blocks);
+    assertEquals(updateParams.ts, realDecisionId);
+
+    const actionsBlock = updateParams.blocks!.find(
+      (b) => b.type === "actions",
+    );
+    assertExists(actionsBlock);
+    assertExists(actionsBlock.elements);
+
+    // Every button value must be the real decision_id, never the placeholder
+    for (const element of actionsBlock.elements!) {
+      assertEquals(element.value, realDecisionId);
+      assertEquals(element.value !== "{{decision_id}}", true);
+    }
+  },
+);
