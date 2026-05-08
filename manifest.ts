@@ -1,22 +1,33 @@
 /**
- * ConsensusBot v2.0 — Slack app manifest (Wave 0 stub).
+ * ConsensusBot v2.0 — Slack app manifest.
  *
  * SPEC: docs/REDEVELOPMENT_SPECIFICATION.md §4.
  *
- * This is the Wave-0 scaffold. `workflows` and `datastores` are filled in
- * by Wave 5 (T-501). The 13-scope `botScopes` list is final per §4 and
- * MUST NOT be reduced; later waves only add entries when SPEC amendments
- * require them.
+ * The 13-scope `botScopes` list is final per §4 and MUST NOT be reduced;
+ * later waves only add entries when SPEC amendments require them.
  */
 import { Manifest } from "deno-slack-sdk/mod.ts";
+
+import DecisionDatastore from "./datastores/decisions.ts";
+import VoteDatastore from "./datastores/votes.ts";
+import VoterDatastore from "./datastores/voters.ts";
+import VoteHistoryDatastore from "./datastores/vote_history.ts";
+
+import CreateDecisionWorkflow from "./workflows/create_decision.ts";
+import ProcessActiveDecisionsWorkflow from "./workflows/process_active_decisions.ts";
 
 export default Manifest({
   name: "ConsensusBot",
   description:
     "Facilitate team decision-making through collaborative consensus building",
   icon: "assets/icon.png",
-  workflows: [],
-  datastores: [],
+  workflows: [CreateDecisionWorkflow, ProcessActiveDecisionsWorkflow],
+  datastores: [
+    DecisionDatastore,
+    VoteDatastore,
+    VoterDatastore,
+    VoteHistoryDatastore,
+  ],
   outgoingDomains: [],
   botScopes: [
     "commands",
