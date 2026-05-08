@@ -1,0 +1,39 @@
+{
+  // ConsensusBot v2.0 — Deno workspace configuration.
+  //
+  // SPEC sources of truth:
+  //   - docs/REDEVELOPMENT_SPECIFICATION.md §2  (Tech Stack & Versions)
+  //   - docs/REDEVELOPMENT_SPECIFICATION.md §3  (Project Layout)
+  //   - docs/REDEVELOPMENT_SPECIFICATION.md §23 (Tooling)
+  //
+  // Note: there is no `start` task. Local execution is `slack run`.
+  "tasks": {
+    "fmt": "deno fmt",
+    "fmt:check": "deno fmt --check",
+    "lint": "deno lint",
+    "check": "deno check manifest.ts",
+    "test": "deno test --allow-all tests/",
+    "ci": "deno task fmt:check && deno task lint && deno task check && deno task test"
+  },
+  "imports": {
+    "deno-slack-sdk/": "https://deno.land/x/deno_slack_sdk@2.15.1/",
+    "deno-slack-api/": "https://deno.land/x/deno_slack_api@2.8.0/",
+    "@std/assert": "jsr:@std/assert@^1"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["deno.window", "deno.ns"],
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment"
+  },
+  "lint": {
+    "exclude": ["archive/"]
+  },
+  "fmt": {
+    "exclude": ["archive/"]
+  },
+  "test": {
+    "exclude": ["archive/"]
+  }
+}
