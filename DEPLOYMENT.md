@@ -1,229 +1,99 @@
-## Deploying ConsensusBot to Slack
+# Deployment
 
-This guide walks through deploying ConsensusBot using Slack's native ROSI
-infrastructure.
+This document describes the end-to-end deploy procedure for ConsensusBot. For
+local development see **[DEVELOPMENT.md](DEVELOPMENT.md)**.
 
-### Prerequisites
+The authoritative reference is
+**[docs/REDEVELOPMENT_SPECIFICATION.md §24](docs/REDEVELOPMENT_SPECIFICATION.md)**.
+This document is a contributor-facing summary; if it disagrees with the SPEC,
+the SPEC wins.
 
-1. **Slack CLI** installed
-   ([installation guide](https://api.slack.com/automation/cli/install))
-2. **Deno** installed (v1.37+)
-   ([installation guide](https://deno.land/manual/getting_started/installation))
-3. Slack workspace with admin permissions
-4. Paid Slack plan (required for Datastores and ROSI features)
+## Prerequisites
 
-### Step 1: Authenticate with Slack
+- Slack CLI (`slack`) installed and authenticated against the target workspace.
+- A Slack workspace on the **Pro plan or higher** (Datastores are gated by plan
+  tier).
+- Repository checked out at the commit you intend to deploy.
+
+## First-time deploy
 
 ```bash
-slack login
+slack login                                                       # OAuth in browser
+slack create                                                      # in repo root; pick workspace
+slack deploy                                                      # builds + deploys to Slack ROSI
+slack triggers create --trigger-def triggers/consensus_command.ts # /consensus shortcut
+./scripts/deploy.sh                                               # creates the schedule trigger
+slack triggers list                                               # verify both exist
 ```
 
-This opens a browser window to authorize the CLI with your workspace.
+After `slack triggers list` you should see two triggers:
 
-### Step 2: Create the App
+1. The `/consensus` shortcut (created by the explicit `slack triggers create`
+   call).
+2. The Mon–Fri 09:00 UTC schedule trigger that runs the
+   `process_active_decisions` workflow (created by `./scripts/deploy.sh`).
 
-From the repository root:
+### Why `./scripts/deploy.sh` is required
+
+Slack rejects scheduled triggers whose `start_time` is in the past with
+`invalid_start_before_now`. The static date in
+`triggers/process_active_decisions_schedule.ts` will drift past "today" the
+moment any time has elapsed since the file was written. `scripts/deploy.sh`
+sidesteps this by emitting a temporary trigger definition with a freshly
+computed start time (the next weekday at 09:00 UTC) and feeding that to
+`slack triggers create`. Always use the script — never call
+`slack triggers create --trigger-def triggers/process_active_decisions_schedule.ts`
+directly.
+
+The schedule fires Mon–Fri at 09:00 UTC, deliberately landing before UK working
+hours (10:00 BST / 09:00 GMT). On each tick the workflow auto-finalises any
+past-deadline `active` decisions and DMs reminders to voters on still-active
+decisions.
+
+## Ongoing development cycle
+
+| Command                 | Purpose                                                               |
+| ----------------------- | --------------------------------------------------------------------- |
+| `slack run`             | Socket-mode dev loop with hot reload — for development, not for prod. |
+| `slack activity --tail` | Live structured-log stream from the deployed app.                     |
+| `slack deploy`          | Push code updates to the existing app.                                |
+| `slack delete`          | **Irreversible** — tears down the app AND deletes all Datastore data. |
+
+Code changes do **not** require re-running the trigger commands. Trigger
+definitions only need to be re-created if `triggers/consensus_command.ts`
+changes its shape, or if the schedule needs to be reset (in which case run
+`./scripts/deploy.sh` again).
+
+## Production isolation
+
+There is no "environments" concept in Slack ROSI — each deploy targets one
+workspace. To run a production instance separately from your dev workspace,
+re-run the first-time-deploy steps against a different workspace:
 
 ```bash
-slack create
-```
-
-Select your workspace when prompted. This creates a new app instance in your
-workspace.
-
-### Step 3: Deploy the Application
-
-```bash
+slack create        # in a clean shell; pick the production workspace
 slack deploy
-```
-
-This command:
-
-- Compiles TypeScript to JavaScript
-- Deploys functions, workflows, and datastores
-- Configures app permissions
-- Sets up the runtime environment
-
-### Step 4: Create Triggers
-
-Create the slash command trigger:
-
-```bash
 slack triggers create --trigger-def triggers/consensus_command.ts
-```
-
-Create the voting button trigger (essential for voting functionality):
-
-```bash
-slack triggers create --trigger-def triggers/vote_button_trigger.ts
-```
-
-Create the scheduled reminder trigger:
-
-```bash
-slack triggers create --trigger-def triggers/reminder_schedule.ts
-```
-
-#### One-command deploy + trigger setup
-
-This repo includes a helper script that deploys the app and ensures required
-triggers exist:
-
-```bash
-chmod +x scripts/deploy.sh
 ./scripts/deploy.sh
 ```
 
-What it does:
+The Slack CLI keeps per-workspace context in `.slack/`; switching between dev
+and prod is a matter of switching workspaces with `slack workspace ...` or
+running deploys from clean repo clones.
 
-- Runs `slack deploy`
-- Ensures the `/consensus` trigger exists (creates it if missing)
-- Ensures the scheduled reminder trigger exists (creates it if missing)
+## CI / automation
 
-##### Why the reminder trigger is generated at deploy time
+There is **no automated CI deploy**. The `.github/workflows/ci.yml` workflow
+gates code quality only — `fmt:check`, `lint`, `check`, and `test`. Production
+deploys are deliberately manual; a human runs `slack deploy` against the
+production workspace after CI is green and the PR is merged.
 
-Slack requires `schedule.start_time` to be **in the future** when creating a
-scheduled trigger. A static date in `triggers/reminder_schedule.ts` can drift
-into the past and fail with:
-
-`invalid_start_before_now`
-
-So `scripts/deploy.sh` computes a future start time (next weekday at 09:00 UTC)
-and generates a temporary trigger definition file for creation.
-
-### Step 5: Verify Installation
-
-1. In Slack, type `/consensus`
-2. You should see a modal to create a new decision
-3. Create a test decision and verify all features work
-
-### Managing Environment Variables
-
-If you need to add environment variables (e.g., for API keys):
-
-```bash
-# Add a new environment variable
-slack env add MY_VAR_NAME
-
-# List all environment variables
-slack env list
-
-# Remove an environment variable
-slack env remove MY_VAR_NAME
-```
-
-### Viewing Logs
-
-Monitor application logs in real-time:
-
-```bash
-slack activity --tail
-```
-
-Or view recent activity:
-
-```bash
-slack activity
-```
-
-### Updating the App
-
-After making code changes:
-
-```bash
-slack deploy
-```
-
-The app will be redeployed with your changes.
-
-### Removing the App
-
-To delete the app from your workspace:
+## Tearing down
 
 ```bash
 slack delete
 ```
 
-⚠️ **Warning**: This removes all data from Datastores!
-
-### Troubleshooting
-
-#### Trigger not working
-
-```bash
-# List all triggers
-slack triggers list
-
-# Delete and recreate
-slack triggers delete --trigger-id <trigger-id>
-slack triggers create --trigger-def triggers/consensus_command.ts
-```
-
-#### Datastore errors
-
-Ensure your workspace has a paid plan. Datastores require:
-
-- Slack Pro plan or higher
-- OR Enterprise Grid
-
-#### Permission errors
-
-Check that your app has the required bot scopes:
-
-- `commands`
-- `chat:write`
-- `chat:write.public`
-- `datastore:read`
-- `datastore:write`
-- `pins:write`
-- `users:read`
-- `usergroups:read`
-- `channels:read`
-- `groups:read`
-- `im:write`
-
-These are defined in `manifest.ts`.
-
-### Production Deployment
-
-For production deployments:
-
-1. **Use a dedicated workspace** for production
-2. **Set up monitoring** via `slack activity`
-3. **Configure scheduled backups** (export Datastore data periodically)
-4. **Test thoroughly** in a development workspace first
-5. **Document any custom configurations** for your team
-
-### Release Workflow
-
-1. Ensure all changes are merged to `develop` and tested with `slack run`
-2. Update `utils/version.ts` with the new version number
-3. Open a PR from `develop` → `main`
-4. After merge, tag the release:
-   ```bash
-   git checkout main
-   git pull
-   git tag vX.Y.Z
-   git push origin vX.Y.Z
-   ```
-5. Deploy: `slack deploy`
-
-### Cost Considerations
-
-Monitor your usage to stay within budget:
-
-- Workflow executions: ~$0.10 per execution
-- Datastore operations: ~$0.005 per 1K reads
-- Scheduled triggers: ~$0.50 per execution
-
-For low volume (<50 decisions/month): **$20-40/month**
-
-### Support
-
-- [Slack Automation Documentation](https://api.slack.com/automation)
-- [Slack CLI Reference](https://api.slack.com/automation/cli)
-- [GitHub Issues](https://github.com/alex-thorne/ConsensusBot/issues)
-
----
-
-_Last updated: February 2026_
+This is irreversible. It removes the app from the workspace **and deletes all
+Datastore data** (decisions, votes, voters, vote history). Re-deploying
+afterwards starts from an empty state.

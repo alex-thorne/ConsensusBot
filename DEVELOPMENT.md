@@ -1,333 +1,118 @@
-# Development Guide
+# Development
 
-Guide for developing and testing ConsensusBot locally.
+This document describes the local development workflow for ConsensusBot. For the
+deploy procedure see **[DEPLOYMENT.md](DEPLOYMENT.md)**; for the contributor
+workflow see **[AGENTS.md](AGENTS.md)**.
 
-## Setup
+## Prerequisites
 
-### 1. Install Prerequisites
+- Deno ≥ 1.37 (`deno --version`).
+- Slack CLI (`slack`) — install per <https://api.slack.com/automation/cli>.
+- A Slack workspace on the **Pro plan or higher** — Slack Datastores require a
+  paid plan, so a Free workspace will fail to deploy.
 
-```bash
-# Install Deno
-curl -fsSL https://deno.land/install.sh | sh
-
-# Install Slack CLI (macOS)
-brew install slack
-
-# Or Linux
-curl -fsSL https://downloads.slack-edge.com/slack-cli/install.sh | bash
-```
-
-### 2. Authenticate
+## First-time setup
 
 ```bash
-slack login
-```
-
-### 3. Clone and Initialize
-
-```bash
-git clone https://github.com/alex-thorne/ConsensusBot.git
+git clone <this-repo>
 cd ConsensusBot
-slack create
+git config core.hooksPath .githooks      # enable the auto-fmt pre-commit hook
+slack login                              # OAuth your Slack workspace
+slack create                             # link the repo to a workspace
 ```
 
-## Branching Workflow
+The pre-commit hook is defined in `.githooks/pre-commit`. It runs `deno fmt`,
+fails the commit if formatting changed any tracked file (so the change can be
+re-staged), then runs `deno task lint` and `deno task check`. Tests are
+intentionally omitted from the hook to keep commits fast — CI catches
+regressions.
 
-```
-feature/my-feature  ──PR──▶  develop  ──PR──▶  main
-                              │                  │
-                         slack run           slack deploy
-                        (shakedown)         (production)
-```
-
-1. Create a feature branch from `develop`
-2. Make changes and open a PR targeting `develop`
-3. After CI passes and review, merge to `develop`
-4. Test locally: `git checkout develop && slack run`
-5. When ready for release, open a PR from `develop` → `main`
-6. After merging to `main`, tag the release and deploy:
-   ```bash
-   git tag vX.Y.Z # e.g., v1.0.0
-   git push origin vX.Y.Z
-   slack deploy
-   ```
-
-## Local Development
-
-### Running Locally
-
-Start the app in development mode:
+## The dev loop
 
 ```bash
-slack run
+slack run                                # socket-mode dev loop with hot reload
 ```
 
-This:
+`slack run` connects to your dev workspace over Socket Mode, watches the source
+tree, and re-deploys on save. `/consensus` in the workspace will hit your local
+code.
 
-- Connects to your workspace via Socket Mode
-- Enables hot-reloading on file changes
-- Shows real-time logs in the terminal
-
-### Making Changes
-
-1. Edit files in `functions/`, `workflows/`, `utils/`, etc.
-2. Save changes (auto-reloads with `slack run`)
-3. Test in Slack
-4. Iterate
-
-### Testing Changes
+In a second terminal you can stream logs:
 
 ```bash
-# In Slack, test the /consensus command
-/consensus
-
-# Check logs
-slack activity --tail
+slack activity --tail                    # live structured-log stream
 ```
 
-## Project Structure
+## Deno tasks
 
-```
-ConsensusBot/
-├── datastores/          # Datastore schemas
-│   ├── decisions.ts
-│   ├── votes.ts
-│   └── voters.ts
-├── functions/           # Custom functions
-│   ├── create_decision.ts
-│   ├── record_vote.ts
-│   └── send_reminders.ts
-├── workflows/           # Workflow definitions
-│   ├── create_decision.ts
-│   ├── vote.ts
-│   └── send_reminders.ts
-├── triggers/            # Trigger definitions
-│   ├── consensus_command.ts
-│   └── reminder_schedule.ts
-├── utils/               # Utility functions
-│   ├── decision_logic.ts
-│   ├── date_utils.ts
-│   └── adr_generator.ts
-├── manifest.ts          # App manifest
-├── deno.json           # Deno configuration
-└── slack.json          # Slack CLI config
-```
+The canonical task list (defined in `deno.jsonc`) is:
 
-## Adding New Features
+| Task        | Command                                                                      | When to run                       |
+| ----------- | ---------------------------------------------------------------------------- | --------------------------------- |
+| `fmt`       | `deno fmt`                                                                   | Before every commit (auto-fixed). |
+| `fmt:check` | `deno fmt --check`                                                           | CI gate; verify no drift.         |
+| `lint`      | `deno lint`                                                                  | Before every commit.              |
+| `check`     | `deno check manifest.ts`                                                     | Before every commit.              |
+| `test`      | `deno test --allow-all tests/`                                               | Before opening a PR.              |
+| `ci`        | `deno task fmt:check && deno task lint && deno task check && deno task test` | Before opening a PR.              |
 
-### 1. Create a New Function
+Run `deno task ci` from a clean tree before pushing — the GitHub Actions
+workflow runs the same commands and will fail otherwise.
 
-```typescript
-// functions/my_function.ts
-import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
+## Project structure
 
-export const MyFunction = DefineFunction({
-  callback_id: "my_function",
-  title: "My Function",
-  source_file: "functions/my_function.ts",
-  input_parameters: {
-    properties: {
-      my_input: {
-        type: Schema.types.string,
-      },
-    },
-    required: ["my_input"],
-  },
-  output_parameters: {
-    properties: {
-      my_output: {
-        type: Schema.types.string,
-      },
-    },
-    required: ["my_output"],
-  },
-});
+The full layout is documented in
+**[docs/REDEVELOPMENT_SPECIFICATION.md §3](docs/REDEVELOPMENT_SPECIFICATION.md)**.
+The high-level shape:
 
-export default SlackFunction(
-  MyFunction,
-  async ({ inputs, client }) => {
-    // Implementation
-    return {
-      outputs: {
-        my_output: "result",
-      },
-    };
-  },
-);
-```
-
-### 2. Create a Workflow
-
-```typescript
-// workflows/my_workflow.ts
-import { DefineWorkflow, Schema } from "deno-slack-sdk/mod.ts";
-import { MyFunction } from "../functions/my_function.ts";
-
-const MyWorkflow = DefineWorkflow({
-  callback_id: "my_workflow",
-  title: "My Workflow",
-  input_parameters: {
-    properties: {
-      channel_id: {
-        type: Schema.slack.types.channel_id,
-      },
-    },
-    required: ["channel_id"],
-  },
-});
-
-MyWorkflow.addStep(MyFunction, {
-  my_input: "test",
-});
-
-export default MyWorkflow;
-```
-
-### 3. Add to Manifest
-
-```typescript
-// manifest.ts
-import MyWorkflow from "./workflows/my_workflow.ts";
-
-export default Manifest({
-  // ...
-  workflows: [
-    CreateDecisionWorkflow,
-    VoteWorkflow,
-    SendRemindersWorkflow,
-    MyWorkflow, // Add here
-  ],
-  // ...
-});
-```
-
-### 4. Deploy
-
-```bash
-slack deploy
-```
-
-## Debugging
-
-### View Logs
-
-```bash
-# Real-time logs
-slack activity --tail
-
-# Recent activity
-slack activity
-
-# Filter by workflow
-slack activity --workflow create_decision_workflow
-```
-
-### Common Issues
-
-**Function not found:**
-
-- Check that function is imported in workflow
-- Verify `source_file` path is correct
-- Re-deploy: `slack deploy`
-
-**Datastore error:**
-
-- Ensure paid Slack plan
-- Check datastore name matches definition
-- Verify permissions in manifest
-
-**Trigger not working:**
-
-- List triggers: `slack triggers list`
-- Recreate: `slack triggers create --trigger-def triggers/my_trigger.ts`
-
-## Code Quality
-
-### TypeScript
-
-Deno has built-in TypeScript support. No compilation step needed!
-
-### Formatting
-
-```bash
-# Format code
-deno fmt
-
-# Check formatting
-deno fmt --check
-```
-
-### Linting
-
-```bash
-# Lint code
-deno lint
-```
+- `manifest.ts` — Slack app manifest (workflows, datastores, scopes).
+- `datastores/` — four Datastore declarations (`decisions`, `votes`, `voters`,
+  `vote_history`).
+- `functions/` — Slack functions (`create_decision`,
+  `process_active_decisions`).
+- `workflows/` — workflow definitions wired into the manifest.
+- `triggers/` — the `/consensus` shortcut and the weekday 09:00 UTC schedule.
+- `utils/` — pure helpers (`decision_logic`, `date_utils`, `escape_slack`,
+  `concurrency`, `adr_generator`, `slack_parse`, `log`).
+- `tests/` — unit tests in the root and integration tests under
+  `tests/integration/`.
+- `scripts/deploy.sh` — registers the schedule trigger with a freshly computed
+  `start_time` (Slack rejects past start times).
 
 ## Testing
 
-### Manual Testing
-
-1. Deploy to development workspace
-2. Test via Slack UI
-3. Check logs for errors
-
-### Future: Automated Testing
-
-Deno has a built-in test runner. Tests can be added like:
-
-```typescript
-// my_function_test.ts
-import { assertEquals } from "https://deno.land/std/assert/mod.ts";
-
-Deno.test("my function works", () => {
-  // Test implementation
-  assertEquals(1 + 1, 2);
-});
-```
-
-Run with:
-
 ```bash
-deno test
+deno task test
 ```
 
-## Deployment
+Tests live under `tests/`. Unit tests sit at the root of `tests/`; the
+integration tests under `tests/integration/` exercise multi-module flows against
+the in-process mock client in `tests/mocks/slack_client.ts`. Both suites run as
+a single `deno test` invocation; `--allow-all` is required because the SDK
+probes for environment variables at import time (none of which the app actually
+depends on — see `SECURITY.md`).
 
-### Development
+## Datastore caveat
 
-```bash
-slack run  # Local development
-```
+Datastores are a **Slack Pro+ feature**. Attempting `slack deploy` against a
+Free workspace will fail with a plan-tier error. Use a Pro dev workspace or ask
+your admin to upgrade the workspace before continuing.
 
-### Staging
+## Troubleshooting
 
-```bash
-slack deploy  # Deploy to workspace
-```
+- **`invalid_start_before_now` from `slack triggers create`.** The static date
+  in `triggers/process_active_decisions_schedule.ts` has drifted past today. Run
+  `./scripts/deploy.sh` instead — it computes a fresh future `start_time`.
+- **Hot reload not picking up changes.** Check that `slack run` is still
+  attached; restart if the socket dropped.
+- **`deno fmt` keeps modifying files in CI.** Run `deno task fmt` locally,
+  re-stage, and commit. The pre-commit hook would have caught this — make sure
+  `git config core.hooksPath .githooks` was run.
 
-### Production
+## Where to go next
 
-1. Create separate Slack app for production
-2. Deploy: `slack deploy`
-3. Configure triggers
-4. Monitor: `slack activity`
-
-## Contributing
-
-1. Create a feature branch
-2. Make changes
-3. Test locally with `slack run`
-4. Deploy and test in dev workspace
-5. Submit PR
-
-## Resources
-
-- [Deno Manual](https://deno.land/manual)
-- [Deno Slack SDK](https://api.slack.com/automation/functions)
-- [Slack CLI Guide](https://api.slack.com/automation/cli)
-- [Slack Workflows](https://api.slack.com/automation/workflows)
-
----
-
-_Happy coding! 🚀_
+- Read
+  **[docs/REDEVELOPMENT_SPECIFICATION.md](docs/REDEVELOPMENT_SPECIFICATION.md)**
+  for the full behavioural contract.
+- Read **[AGENTS.md](AGENTS.md)** for the PR workflow and the
+  single-file-ownership rule used during the rebuild.

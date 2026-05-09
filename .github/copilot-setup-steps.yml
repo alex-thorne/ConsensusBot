@@ -1,0 +1,15 @@
+# Copilot coding agent pre-firewall setup steps.
+#
+# These steps run before the sandbox firewall is enabled, so they can
+# freely access the network to download tools and dependencies.
+# This allows `deno check` and `deno test` to work offline later.
+steps:
+  - name: Setup Deno
+    uses: denoland/setup-deno@v1
+    with:
+      deno-version: v1.x
+
+  - name: Cache Deno dependencies (manifest + tests)
+    run: |
+      deno cache manifest.ts
+      find tests -name "*.ts" | xargs deno cache

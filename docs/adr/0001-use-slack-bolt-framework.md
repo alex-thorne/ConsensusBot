@@ -1,5 +1,11 @@
 # ADR-0001: Use Slack Bolt Framework for Bot Development
 
+> **Historical record (Azure era).** This ADR documents the original
+> Bolt-framework choice predating the v2.0 ROSI migration. It is retained for
+> context and is no longer in effect; see
+> [`SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md`](../SLACK_NATIVE_ARCHITECTURE_REEVALUATION.md)
+> for the current architecture.
+
 ## Status
 
 Accepted

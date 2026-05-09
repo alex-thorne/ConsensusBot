@@ -1,15 +1,27 @@
+// ConsensusBot v2.0 — Decision logic (Robert's Rules + quorum).
+//
+// SPEC sources of truth:
+//   - docs/REDEVELOPMENT_SPECIFICATION.md §15 (Decision logic)
+//   - docs/REDEVELOPMENT_BUILD_PLAN.md T-104
+//
+// This module is **pure**: no I/O, no datastore access, no async. All pass /
+// fail conditions are computed with **integer arithmetic** so floating-point
+// edge cases cannot drift the outcome. The only place a divide-and-multiply
+// pattern is permitted is for *display* percentages (none rendered here).
+//
+// Reason strings are part of the contract — they are pinned by acceptance
+// tests and surfaced in `decisions.outcome_reason`. Do not reword them.
+
+import type { SuccessCriteria, VoteRecord } from "../types/decision_types.ts";
+
+// ---------------------------------------------------------------------------
+// Public types (§15.2)
+// ---------------------------------------------------------------------------
+
 /**
- * Decision Outcome Logic Module for Slack ROSI
- *
- * Implements calculation logic for determining decision outcomes based on
- * success criteria (Simple Majority, Supermajority, Unanimity).
+ * Per-criterion vote tally. Abstentions are counted but never contribute to
+ * the decisive denominator (`yes + no`).
  */
-
-import { VoteRecord } from "../types/decision_types.ts";
-
-// Re-export for backward compatibility
-export type Vote = VoteRecord;
-
 export interface VoteCounts {
   yes: number;
   no: number;
@@ -17,18 +29,35 @@ export interface VoteCounts {
   total: number;
 }
 
+/**
+ * Outcome of a vote-resolution call. `outcome` is the discriminator used by
+ * the finaliser:
+ *   - `"approved"`   — pass condition met.
+ *   - `"rejected"`   — quorum failed, no decisive votes, or threshold missed.
+ *   - `"tied"`       — simple-majority only; equal yes / no with no remaining
+ *                      voters that could change the outcome.
+ *   - `"deadlocked"` — reserved for the finaliser when `checkDeadlock` fires;
+ *                      the calculator functions never emit this directly.
+ *
+ * `error` is set only on the default branch of `calculateDecisionOutcome`
+ * when an unrecognised `criteria` is supplied (§15.7).
+ */
 export interface DecisionResult {
   passed: boolean;
   reason: string;
   voteCounts: VoteCounts;
-  percentage: number;
-  requiredVotersCount?: number;
-  missingVotes?: number;
-  quorum?: number;
-  quorumMet?: boolean;
+  decisiveVotes: number;
+  effectiveRequiredVoters: number;
+  quorum: number;
+  quorumMet: boolean;
+  outcome: "approved" | "rejected" | "tied" | "deadlocked";
   error?: boolean;
 }
 
+/**
+ * Result of a deadlock check. Quorum is intentionally NOT a deadlock factor
+ * (§15.8): even below quorum, more voters can still arrive.
+ */
 export interface DeadlockResult {
   isDeadlocked: boolean;
   reason: string;
@@ -36,295 +65,336 @@ export interface DeadlockResult {
   remainingVotes: number;
 }
 
-/**
- * Calculate vote counts for a decision
- * @param votes - Array of vote objects
- * @returns Vote counts by type
- */
-export const calculateVoteCounts = (votes: Vote[]): VoteCounts => {
-  const counts: VoteCounts = {
-    yes: 0,
-    no: 0,
-    abstain: 0,
-    total: votes.length,
-  };
-
-  for (const vote of votes) {
-    if (vote.vote_type === "yes") {
-      counts.yes++;
-    } else if (vote.vote_type === "no") {
-      counts.no++;
-    } else if (vote.vote_type === "abstain") {
-      counts.abstain++;
-    }
-  }
-
-  return counts;
-};
+// ---------------------------------------------------------------------------
+// §15.3 — calculateVoteCounts
+// ---------------------------------------------------------------------------
 
 /**
- * Calculate simple majority result
- * Simple Majority: votes_yes > 50% of total votes
- *
- * @param voteCounts - Vote counts object
- * @returns Result object with status and details
+ * Linear scan over the votes array. Increments per vote_type; `total` is the
+ * length of the input. Unknown vote_type values are ignored at runtime; the
+ * `VoteType` literal already constrains callers at compile time.
  */
-export const calculateSimpleMajority = (
-  voteCounts: VoteCounts,
-): DecisionResult => {
-  const { yes, total } = voteCounts;
-
-  // Edge case: no votes cast
-  if (total === 0) {
-    return {
-      passed: false,
-      reason: "No votes have been cast",
-      voteCounts,
-      percentage: 0,
-    };
+export function calculateVoteCounts(votes: VoteRecord[]): VoteCounts {
+  let yes = 0;
+  let no = 0;
+  let abstain = 0;
+  for (const v of votes) {
+    if (v.vote_type === "yes") yes++;
+    else if (v.vote_type === "no") no++;
+    else if (v.vote_type === "abstain") abstain++;
   }
+  return { yes, no, abstain, total: votes.length };
+}
 
-  // Calculate percentage (yes votes / total votes)
-  const percentage = (yes / total) * 100;
-  const passed = percentage > 50;
+// ---------------------------------------------------------------------------
+// Internal helper — populate the shared envelope fields on every result.
+// ---------------------------------------------------------------------------
 
+function envelope(
+  counts: VoteCounts,
+  R: number,
+  quorum: number,
+): {
+  decisiveVotes: number;
+  effectiveRequiredVoters: number;
+  quorum: number;
+  quorumMet: boolean;
+} {
+  const decisive = counts.yes + counts.no;
   return {
-    passed,
-    reason: passed
-      ? `Simple majority achieved with ${percentage.toFixed(2)}% yes votes`
-      : `Simple majority not achieved. Need >50%, got ${
-        percentage.toFixed(2)
-      }%`,
-    voteCounts,
-    percentage,
+    decisiveVotes: decisive,
+    effectiveRequiredVoters: R,
+    quorum,
+    quorumMet: counts.total >= quorum,
   };
-};
+}
+
+// ---------------------------------------------------------------------------
+// §15.4 — calculateSimpleMajority
+// ---------------------------------------------------------------------------
 
 /**
- * Calculate supermajority result
- * Supermajority: votes_yes >= 66% of voters_total_count
+ * Pass condition (integer-safe):
+ *   `votes_cast >= quorum AND yes*2 > yes+no AND (yes+no) >= 1`.
  *
- * @param voteCounts - Vote counts object
- * @param requiredVotersCount - Total number of required voters
- * @returns Result object with status and details
+ * A 50/50 split with no remaining voters is reported as `outcome: "tied"`,
+ * which is distinct from `"rejected"` so the finaliser can surface the
+ * tie-specific reason in the ADR.
  */
-export const calculateSupermajority = (
-  voteCounts: VoteCounts,
-  requiredVotersCount: number,
-): DecisionResult => {
-  const { yes, total } = voteCounts;
+export function calculateSimpleMajority(
+  counts: VoteCounts,
+  R: number,
+  quorum: number,
+): DecisionResult {
+  const env = envelope(counts, R, quorum);
+  const votesCast = counts.total;
+  const decisive = counts.yes + counts.no;
 
-  // Edge case: no required voters defined
-  if (requiredVotersCount === 0) {
+  if (votesCast < quorum) {
     return {
       passed: false,
-      reason: "No required voters defined for this decision",
-      voteCounts,
-      percentage: 0,
+      outcome: "rejected",
+      reason: `Quorum not met (${votesCast} of ${quorum} required)`,
+      voteCounts: counts,
+      ...env,
     };
   }
-
-  // Calculate percentage (yes votes / total required voters)
-  const percentage = (yes / requiredVotersCount) * 100;
-  const passed = percentage >= 66;
-
+  if (decisive === 0) {
+    return {
+      passed: false,
+      outcome: "rejected",
+      reason: "No decisive votes (all abstentions)",
+      voteCounts: counts,
+      ...env,
+    };
+  }
+  if (counts.yes * 2 > decisive) {
+    return {
+      passed: true,
+      outcome: "approved",
+      reason:
+        `Simple majority achieved (${counts.yes} yes of ${decisive} decisive)`,
+      voteCounts: counts,
+      ...env,
+    };
+  }
+  if (counts.yes === counts.no) {
+    return {
+      passed: false,
+      outcome: "tied",
+      reason: `Tied (${counts.yes} yes, ${counts.no} no)`,
+      voteCounts: counts,
+      ...env,
+    };
+  }
   return {
-    passed,
-    reason: passed
-      ? `Supermajority achieved with ${percentage.toFixed(2)}% yes votes`
-      : `Supermajority not achieved. Need ≥66%, got ${percentage.toFixed(2)}%`,
-    voteCounts,
-    percentage,
-    requiredVotersCount,
-    missingVotes: requiredVotersCount - total,
+    passed: false,
+    outcome: "rejected",
+    reason:
+      `Simple majority not achieved (${counts.yes} yes of ${decisive} decisive)`,
+    voteCounts: counts,
+    ...env,
   };
-};
+}
+
+// ---------------------------------------------------------------------------
+// §15.5 — calculateSupermajority
+// ---------------------------------------------------------------------------
 
 /**
- * Calculate unanimity result
- * Unanimity: All votes are Yes AND total_votes >= quorum
- *
- * @param voteCounts - Vote counts object
- * @param requiredVotersCount - Total number of required voters
- * @param quorum - Minimum number of votes required (defaults to requiredVotersCount)
- * @returns Result object with status and details
+ * Two-thirds threshold with the integer-safe rearrangement
+ * `yes*3 >= (yes+no)*2`. The `>=` is deliberate: 2/3 is treated as inclusive
+ * per Robert's Rules.
  */
-export const calculateUnanimity = (
-  voteCounts: VoteCounts,
-  requiredVotersCount: number,
-  quorum: number | null = null,
-): DecisionResult => {
-  const { yes, no, abstain, total } = voteCounts;
+export function calculateSupermajority(
+  counts: VoteCounts,
+  R: number,
+  quorum: number,
+): DecisionResult {
+  const env = envelope(counts, R, quorum);
+  const votesCast = counts.total;
+  const decisive = counts.yes + counts.no;
 
-  // Default quorum to required voters count
-  const effectiveQuorum = quorum !== null ? quorum : requiredVotersCount;
-
-  // Edge case: no required voters defined
-  if (requiredVotersCount === 0) {
+  if (votesCast < quorum) {
     return {
       passed: false,
-      reason: "No required voters defined for this decision",
-      voteCounts,
-      percentage: 0,
+      outcome: "rejected",
+      reason: `Quorum not met (${votesCast} of ${quorum} required)`,
+      voteCounts: counts,
+      ...env,
     };
   }
-
-  // Check if quorum is met
-  if (total < effectiveQuorum) {
+  if (decisive === 0) {
     return {
       passed: false,
-      reason: `Quorum not met. Need ${effectiveQuorum} votes, got ${total}`,
-      voteCounts,
-      percentage: (yes / requiredVotersCount) * 100,
-      quorum: effectiveQuorum,
-      quorumMet: false,
+      outcome: "rejected",
+      reason: "No decisive votes (all abstentions)",
+      voteCounts: counts,
+      ...env,
     };
   }
-
-  // Check if all votes are Yes (no No votes)
-  // Abstain votes don't count against unanimity
-  const hasNoVotes = no > 0;
-
-  if (hasNoVotes) {
+  if (counts.yes * 3 >= decisive * 2) {
     return {
-      passed: false,
-      reason: `Unanimity not achieved. ${no} vote(s) against`,
-      voteCounts,
-      percentage: (yes / total) * 100,
-      quorum: effectiveQuorum,
-      quorumMet: true,
+      passed: true,
+      outcome: "approved",
+      reason:
+        `Two-thirds majority achieved (${counts.yes} yes of ${decisive} decisive)`,
+      voteCounts: counts,
+      ...env,
     };
   }
+  return {
+    passed: false,
+    outcome: "rejected",
+    reason:
+      `Two-thirds majority not achieved (${counts.yes} yes of ${decisive} decisive)`,
+    voteCounts: counts,
+    ...env,
+  };
+}
 
-  // Check if there are any Yes votes at all
-  if (yes === 0) {
+// ---------------------------------------------------------------------------
+// §15.6 — calculateUnanimity
+// ---------------------------------------------------------------------------
+
+/**
+ * Unanimity: at least one yes, zero no votes. Abstentions never block
+ * unanimity (§15.6 / audit §C.8).
+ */
+export function calculateUnanimity(
+  counts: VoteCounts,
+  R: number,
+  quorum: number,
+): DecisionResult {
+  const env = envelope(counts, R, quorum);
+  const votesCast = counts.total;
+
+  if (votesCast < quorum) {
     return {
       passed: false,
+      outcome: "rejected",
+      reason: `Quorum not met (${votesCast} of ${quorum} required)`,
+      voteCounts: counts,
+      ...env,
+    };
+  }
+  if (counts.yes === 0) {
+    return {
+      passed: false,
+      outcome: "rejected",
       reason: "No yes votes cast",
-      voteCounts,
-      percentage: 0,
-      quorum: effectiveQuorum,
-      quorumMet: true,
+      voteCounts: counts,
+      ...env,
     };
   }
-
-  // All conditions met for unanimity
-  const percentage = (yes / requiredVotersCount) * 100;
+  if (counts.no > 0) {
+    return {
+      passed: false,
+      outcome: "rejected",
+      reason: `Unanimity not achieved (${counts.no} vote(s) against)`,
+      voteCounts: counts,
+      ...env,
+    };
+  }
   return {
     passed: true,
+    outcome: "approved",
     reason:
-      `Unanimity achieved with ${yes} yes vote(s) and ${abstain} abstention(s)`,
-    voteCounts,
-    percentage,
-    quorum: effectiveQuorum,
-    quorumMet: true,
+      `Unanimity achieved (${counts.yes} yes, ${counts.abstain} abstention(s))`,
+    voteCounts: counts,
+    ...env,
   };
-};
+}
+
+// ---------------------------------------------------------------------------
+// §15.7 — calculateDecisionOutcome
+// ---------------------------------------------------------------------------
 
 /**
- * Calculate decision outcome based on success criteria
+ * Top-level dispatcher. Switches on `criteria`; the default branch sets
+ * `error: true` and a fixed reason so the caller can distinguish a
+ * configuration bug from a normal rejection.
  *
- * @param votes - Array of vote objects
- * @param successCriteria - Success criteria (simple_majority, super_majority, unanimous)
- * @param requiredVotersCount - Total number of required voters
- * @param quorum - Optional quorum (for unanimity)
- * @returns Decision outcome result
+ * `criteria` is widened to `string` here (rather than `SuccessCriteria`) so
+ * that runtime-supplied values from the datastore can fall through to the
+ * default branch without a cast-and-pray pattern.
  */
-export const calculateDecisionOutcome = (
-  votes: Vote[],
-  successCriteria: string,
-  requiredVotersCount: number,
-  quorum: number | null = null,
-): DecisionResult => {
-  const voteCounts = calculateVoteCounts(votes);
-
-  let result: DecisionResult;
-  switch (successCriteria) {
+export function calculateDecisionOutcome(
+  votes: VoteRecord[],
+  criteria: SuccessCriteria | string,
+  R: number,
+  quorum: number,
+): DecisionResult {
+  const counts = calculateVoteCounts(votes);
+  switch (criteria) {
     case "simple_majority":
-      result = calculateSimpleMajority(voteCounts);
-      break;
+      return calculateSimpleMajority(counts, R, quorum);
     case "super_majority":
-      result = calculateSupermajority(voteCounts, requiredVotersCount);
-      break;
+      return calculateSupermajority(counts, R, quorum);
     case "unanimous":
-      result = calculateUnanimity(voteCounts, requiredVotersCount, quorum);
-      break;
-    default:
+      return calculateUnanimity(counts, R, quorum);
+    default: {
+      const env = envelope(counts, R, quorum);
       return {
         passed: false,
-        reason: `Invalid success criteria: ${successCriteria}`,
-        voteCounts,
-        percentage: 0,
+        outcome: "rejected",
+        reason: `Invalid success criteria: ${criteria}`,
+        voteCounts: counts,
+        ...env,
         error: true,
       };
+    }
   }
+}
 
-  return result;
-};
+// ---------------------------------------------------------------------------
+// §15.8 — checkDeadlock
+// ---------------------------------------------------------------------------
 
 /**
- * Check if decision has reached a deadlock
- * Deadlock occurs when it's mathematically impossible to reach success criteria
+ * Returns `isDeadlocked: true` only when the criterion's pass condition is
+ * UNREACHABLE even if every remaining required voter votes yes. Quorum is
+ * intentionally not part of this check — the deadline-finalisation path
+ * handles quorum-not-met separately.
  *
- * @param votes - Array of vote objects
- * @param successCriteria - Success criteria
- * @param requiredVotersCount - Total number of required voters
- * @returns Deadlock status
+ * `remainingVotes` is clamped at zero so an unexpected `total > R`
+ * (deactivated voter still counted, etc.) cannot turn the best-case maths
+ * negative.
  */
-export const checkDeadlock = (
-  votes: Vote[],
-  successCriteria: string,
-  requiredVotersCount: number,
-): DeadlockResult => {
-  const voteCounts = calculateVoteCounts(votes);
-  const { yes, no, total } = voteCounts;
-  const remainingVotes = requiredVotersCount - total;
+export function checkDeadlock(
+  votes: VoteRecord[],
+  criteria: SuccessCriteria | string,
+  R: number,
+  _quorum: number,
+): DeadlockResult {
+  const counts = calculateVoteCounts(votes);
+  const remaining = Math.max(0, R - counts.total);
 
-  let isDeadlocked = false;
-  let reason = "";
-
-  switch (successCriteria) {
+  switch (criteria) {
     case "simple_majority": {
-      // For simple majority, check if even with all remaining votes as yes, we can't reach >50%
-      const maxPossibleYes = yes + remainingVotes;
-      const totalAfterRemaining = total + remainingVotes;
-
-      // Already passed - not a deadlock
-      if ((yes / total) > 0.5) {
-        isDeadlocked = false;
-      } // Can't reach majority even with all remaining as yes
-      else if ((maxPossibleYes / totalAfterRemaining) <= 0.5) {
-        isDeadlocked = true;
-        reason =
-          "Cannot reach simple majority even if all remaining votes are yes";
+      const maxYes = counts.yes + remaining;
+      const maxDecisive = counts.yes + counts.no + remaining;
+      if (maxYes * 2 <= maxDecisive) {
+        return {
+          isDeadlocked: true,
+          reason: "Cannot achieve simple majority even with all remaining yes",
+          voteCounts: counts,
+          remainingVotes: remaining,
+        };
       }
       break;
     }
-
     case "super_majority": {
-      // Check if we can still reach 66% with remaining votes
-      const maxYes = yes + remainingVotes;
-      if ((maxYes / requiredVotersCount) < 0.66) {
-        isDeadlocked = true;
-        reason =
-          "Cannot reach supermajority (66%) even if all remaining votes are yes";
+      const maxYes = counts.yes + remaining;
+      const maxDecisive = counts.yes + counts.no + remaining;
+      if (maxYes * 3 < maxDecisive * 2) {
+        return {
+          isDeadlocked: true,
+          reason:
+            "Cannot achieve two-thirds majority even with all remaining yes",
+          voteCounts: counts,
+          remainingVotes: remaining,
+        };
       }
       break;
     }
-
-    case "unanimous":
-      // Any No vote creates a deadlock for unanimity
-      if (no > 0) {
-        isDeadlocked = true;
-        reason = "Unanimity impossible due to existing no vote(s)";
+    case "unanimous": {
+      if (counts.no > 0) {
+        return {
+          isDeadlocked: true,
+          reason: "Unanimity impossible — at least one no vote already cast",
+          voteCounts: counts,
+          remainingVotes: remaining,
+        };
       }
       break;
+    }
   }
 
   return {
-    isDeadlocked,
-    reason,
-    voteCounts,
-    remainingVotes,
+    isDeadlocked: false,
+    reason: "",
+    voteCounts: counts,
+    remainingVotes: remaining,
   };
-};
+}

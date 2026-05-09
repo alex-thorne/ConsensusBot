@@ -1,11 +1,30 @@
-## Pull Request Checklist
+## Summary
 
-Before marking this PR as ready for review, please confirm:
+<!-- What changed and why. Link to the SPEC section if behaviour-changing. -->
 
-- [ ] `deno task ci` passes locally (runs fmt:check, lint, check, and test)
-- [ ] `deno task fmt:check` — no formatting issues
-- [ ] `deno task lint` — no lint warnings or errors
-- [ ] `deno task check` — no TypeScript type errors
-- [ ] `deno task test` — all tests pass
-- [ ] Changes are documented (README / AGENTS.md / inline comments) where
-      appropriate
+## SPEC alignment
+
+- [ ] If this changes behaviour, the SPEC has been updated via a
+      `spec-amend/...` PR or the PR description states why no amendment is
+      needed.
+
+## Checks
+
+- [ ] `deno task fmt:check` ✅
+- [ ] `deno task lint` ✅
+- [ ] `deno task check` ✅
+- [ ] `deno task test` ✅
+- [ ] `deno task ci` ✅ (or each individual task ran clean)
+
+## Test plan
+
+<!-- How was this validated? Unit tests + integration tests + (if applicable) live workspace e2e. -->
+
+## Risk
+
+- [ ] No new `any` / `// @ts-ignore` / `Deno.env.get` introduced.
+- [ ] No legacy artefacts re-introduced (`vote_button_trigger`,
+      `record_vote_function`, `send_reminders_function`, etc.).
+- [ ] No `{{decision_id}}` placeholder anywhere.
+- [ ] Bot filter still applied uniformly across individual + usergroup + channel
+      sources (§8.2.3).
