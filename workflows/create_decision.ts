@@ -47,14 +47,12 @@ const formStep = CreateDecisionWorkflow.addStep(
           name: "decision_name",
           title: "Decision Name",
           type: Schema.types.string,
-          max_length: 200,
         },
         {
           name: "proposal",
           title: "Proposal",
           type: Schema.types.string,
           long: true,
-          max_length: 2500,
         },
         {
           name: "required_voters",
