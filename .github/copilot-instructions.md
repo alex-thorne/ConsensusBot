@@ -28,6 +28,14 @@ contributing to ConsensusBot v2.0. The source of truth for behaviour is
 - Run `deno task ci` and confirm it is green before opening a PR.
 - The PR template's checklist must be filled in honestly.
 
+## Filing issues
+
+When opening a GitHub issue (via web UI or `gh issue create`), follow the
+structure in [`.github/ISSUE_TEMPLATE.md`](ISSUE_TEMPLATE.md): Problem → Repro /
+Background → Why this matters → Proposed approach → Acceptance → Context. Cite
+file:line and SPEC § rather than paraphrasing. Don't invent new section headings
+— downstream tooling and other agents key off these.
+
 ## Forbidden modifications
 
 Do NOT modify the following files without explicit owner approval. They are

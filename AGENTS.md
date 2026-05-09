@@ -68,6 +68,15 @@ file is the per-commit checklist.
 - Don't bundle reformatting with logic changes — `deno fmt` reformats should
   land in their own commit, or be stable across the diff.
 
+## Filing issues
+
+Every new issue (bug, enhancement, or refactor) MUST follow the structure in
+[`.github/ISSUE_TEMPLATE.md`](.github/ISSUE_TEMPLATE.md): Problem → Repro /
+Background → Why this matters → Proposed approach → Acceptance → Context. Cite
+file:line and SPEC § rather than paraphrasing. The Acceptance list is the
+contract — write it so "done" is unambiguous. The web UI auto-populates this
+template; when filing via `gh issue create --body`, mirror the same sections.
+
 ## Where to look first
 
 - **Behaviour.**
