@@ -1,122 +1,95 @@
-# Copilot Instructions for ConsensusBot
+# Copilot / AI-agent contributor mandate
 
-## Project Overview
+These instructions are binding for every AI agent (Copilot, Claude, etc.)
+contributing to ConsensusBot v2.0. The source of truth for behaviour is
+`docs/REDEVELOPMENT_SPECIFICATION.md`. This file is pinned by SPEC §23.4.
 
-- **Runtime**: Deno (see `deno.jsonc` for configuration)
-- **Task runner**: `deno task <name>` (tasks defined in `deno.jsonc`)
-- **Language**: TypeScript
+## Style
 
-## File Structure
+- TypeScript strict mode. No `any`. No `// @ts-ignore`.
+- When a value's shape is not statically known, type it as `unknown` and narrow
+  with explicit type guards before use.
+- Prefer named exports and explicit return types on exported functions.
 
-```
-functions/          # Slack function handlers
-workflows/          # Slack workflow definitions
-utils/              # Shared utility modules
-datastores/         # Slack datastore schemas
-triggers/           # Slack trigger definitions
-tests/              # Unit tests
-tests/integration/  # Integration tests
-tests/mocks/        # Test mocks and fixtures
-manifest.ts         # Slack app manifest
-deno.jsonc          # Deno config and task definitions
-```
+## Pre-commit
 
-## MANDATORY: Run `deno fmt` Before Every Commit
+- Run `deno fmt` before every commit.
+- The repo's pre-commit hook (`.githooks/pre-commit`, enabled via
+  `git config core.hooksPath .githooks`) does this automatically.
+- If the hook isn't installed, run the following manually before committing:
+  ```
+  deno fmt
+  deno task lint
+  deno task check
+  ```
 
-You MUST run `deno fmt` (the auto-formatter) before every commit — not just
-`deno fmt --check`. The formatter will rewrite files in-place to comply with
-Deno's style rules. Never skip this step.
+## Pre-PR
 
-```sh
-deno fmt
-```
+- Run `deno task ci` and confirm it is green before opening a PR.
+- The PR template's checklist must be filled in honestly.
 
-After formatting, stage the changes and then commit.
+## Forbidden modifications
 
-## MANDATORY: Run `deno lint` Before Every Commit
+Do NOT modify the following files without explicit owner approval. They are
+pinned by SPEC §23:
 
-You MUST run `deno lint` before every commit and fix all lint errors before
-proceeding.
+- `.github/workflows/ci.yml`
+- `deno.jsonc`
+- `.github/pull_request_template.md`
 
-```sh
-deno lint
-```
+If a task genuinely requires a change to one of these, stop and request
+approval; do not bundle it silently into another change.
 
-## MANDATORY: Run `deno task ci` After All Changes Are Complete
+## No "checks blocked by network" excuses
 
-Before opening or updating a pull request, you MUST run the full CI suite
-locally and ensure it passes:
+Run the checks. `deno task ci` does not need network access for the offline test
+suite. If a check truly cannot run, say so explicitly with reproducible failure
+logs — do not skip checks and claim they were blocked.
 
-```sh
-deno task ci
-```
+## Single-file ownership for parallel work
 
-This runs `fmt:check`, `lint`, `check` (type-checking), and `test` in sequence.
-All checks must pass before you commit or push.
+When multiple agents are dispatched in parallel, each agent owns the file paths
+listed in its task brief. Never modify another task's files. If your task
+requires a change to a file owned by another task, stop and surface the conflict
+to the orchestrator.
 
-## Required Workflow
+## Slack-render escaping
 
-1. Make your code changes.
-2. Run `deno fmt` to auto-format all files.
-3. Run `deno task ci` to verify formatting, lint, type-checking, and tests all
-   pass.
-4. Commit **only after** all checks pass.
+All user-supplied text MUST pass through `escapeSlackText` AND
+`neutraliseBackticks` before being rendered into any Slack message, modal, or
+thread reply (per SPEC §14.3 and §17.1). This includes titles, descriptions,
+outcome reasons, and any free-form input surfaced back to users.
 
-## Deno Formatting Rules
+## Vote-resolution invariants
 
-`deno fmt` enforces the following style (do not fight the formatter — let it
-rewrite the file):
+- Use **integer arithmetic only** for pass/fail determination (yes counts,
+  effective quorum, threshold comparisons).
+- Floating-point arithmetic is acceptable for **display percentages only**.
+- Abstentions never count for or against a decision.
 
-- **Indentation**: 2 spaces (no tabs)
-- **Quotes**: double quotes for strings
-- **Semicolons**: required at end of statements
-- **Trailing commas**: required in multi-line arrays, objects, and parameter
-  lists
-- **Line length**: ~80 characters; `deno fmt` will automatically break long
-  lines
+## Datastore-write-before-message-post ordering
 
-### Long Lines — Accept the Formatter's Output
+Per SPEC §8.4: never post a Slack message before the supporting datastore rows
+are persisted. The required order is:
 
-When `deno fmt` wants to break a long array literal, function call, or argument
-list across multiple lines, you MUST accept that formatting. Do not try to keep
-it on one line. Example:
+1. Persist `decisions` / `voters` / `votes` rows.
+2. Post (or update) the Slack message.
+3. On message-post failure, rollback the datastore rows.
 
-```ts
-// WRONG — line too long, will be reformatted by deno fmt
-const result = await someFunction(argumentOne, argumentTwo, argumentThree);
+This applies to decision creation, vote recording, finalisation, cancel, and
+delete flows.
 
-// CORRECT — let deno fmt break it
-const result = await someFunction(
-  argumentOne,
-  argumentTwo,
-  argumentThree,
-);
-```
+## Forbidden legacy artefacts
 
-## Testing Requirements
+Do not re-introduce names from the v1 codebase:
 
-- Unit tests go in `tests/`.
-- Integration tests go in `tests/integration/`.
-- Mocks and fixtures go in `tests/mocks/`.
-- Run `deno task test` to execute the full test suite.
+- `vote_button_trigger`
+- `record_vote_function`
+- `send_reminders_function`
+- The `{{decision_id}}` placeholder in any code, template, or block payload.
 
-## CI Commands Reference
+## Secrets / environment
 
-| Command               | Description                              |
-| --------------------- | ---------------------------------------- |
-| `deno task fmt`       | **RUN THIS BEFORE EVERY COMMIT**         |
-| `deno task fmt:check` | Check formatting without modifying files |
-| `deno task lint`      | Run the linter                           |
-| `deno task check`     | Run TypeScript type checking             |
-| `deno task test`      | Run the test suite                       |
-| `deno task ci`        | Run all of the above checks in sequence  |
-
-## PROHIBITED Behaviors
-
-- **Do NOT** claim that checks are "blocked by network" or "will pass in CI" as
-  a reason for skipping them. If you genuinely cannot run a command, say so
-  explicitly and leave the corresponding PR checklist box **unchecked**.
-- **Do NOT** check a PR checklist box unless you have actually run that command
-  and it passed.
-- **Do NOT** modify `.github/workflows/*.yml`, `deno.jsonc`, or
-  `.github/pull_request_template.md`.
+- No `Deno.env.get` in production code paths. Configuration that varies per
+  workspace lives in datastores or manifest config.
+- No secrets committed to the repo.

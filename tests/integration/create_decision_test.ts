@@ -1,343 +1,970 @@
+// ConsensusBot v2.0 — Integration tests for `create_decision`.
+//
+// SPEC sources of truth:
+//   - docs/REDEVELOPMENT_SPECIFICATION.md §8  (full create_decision flow)
+//   - docs/REDEVELOPMENT_SPECIFICATION.md §16 (eventual consistency, finalized_at)
+//   - docs/REDEVELOPMENT_SPECIFICATION.md §21.2 (integration test contract)
+//   - docs/REDEVELOPMENT_BUILD_PLAN.md  T-502 (this task)
+//
+// Test approach
+// -------------
+//
+// `functions/create_decision.ts` exports the SlackFunction-wrapped function as
+// its default export. The wrapper is a function `(ctx) => ...` that internally
+// calls `enrichContext(ctx)` (from the SDK) which **discards** any user-supplied
+// `ctx.client` and constructs a fresh `SlackAPI(token)` web client. That client
+// makes real `fetch()` calls to `https://slack.com/api/<method>`.
+//
+// To drive the function with a `MockSlackClient` we therefore:
+//
+//   1. Patch `globalThis.fetch` for the duration of each test.
+//   2. Parse each request URL → method name (e.g. `apps.datastore.put`).
+//   3. Decode the SDK's URL-encoded form body. Object/array fields (`item`,
+//      `expression_values`, `blocks`, …) are JSON-stringified by the SDK on
+//      the way out, so we JSON.parse them on the way in.
+//   4. Dispatch to the corresponding `MockSlackClient` method.
+//   5. Serialise the mock's response back as a JSON Response.
+//
+// Block-action handlers (vote / cancel / delete) are dispatched via
+// `default.blockActions.call(default, ctx)` — `blockActions` is a method bound
+// to the wrapper instance (it does `this.matchHandler(...)`), so we use
+// `Function.prototype.call` with the wrapper as `this`.
+//
+// What this gets us: the real production code paths inside
+// `functions/create_decision.ts` are exercised end-to-end against an in-memory
+// datastore + chat. No code paths are inlined or replicated.
+//
+// Acceptance:
+//   deno test --allow-all tests/integration/create_decision_test.ts
+
+import { assert, assertEquals, assertMatch } from "@std/assert";
+
+import createDecision from "../../functions/create_decision.ts";
+import { MockSlackClient } from "../mocks/slack_client.ts";
+import type {
+  DecisionRecord,
+  VoteRecord,
+  VoterRecord,
+} from "../../types/decision_types.ts";
+import type {
+  ChatPostMessageArgs,
+  ChatUpdateArgs,
+  ConversationsMembersArgs,
+  DatastoreDeleteArgs,
+  DatastoreGetArgs,
+  DatastorePutArgs,
+  DatastoreQueryArgs,
+  PinsAddArgs,
+  PinsListArgs,
+  PinsRemoveArgs,
+  UsergroupsListArgs,
+  UsergroupsUsersListArgs,
+} from "../../types/slack_types.ts";
+
+// ---------------------------------------------------------------------------
+// UUID regex (RFC-4122 v4-shaped) — used by Test 1 to assert decision_id format.
+// ---------------------------------------------------------------------------
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// ---------------------------------------------------------------------------
+// Fetch bridge — routes Slack web-API calls to a `MockSlackClient`.
+// ---------------------------------------------------------------------------
+
 /**
- * Integration tests for create_decision function
+ * Decode the SDK's URL-encoded request body into a plain object.
  *
- * Tests the complete decision creation flow with mocked Slack client
+ * The deno-slack-api 2.8 client serialises bodies as `URLSearchParams` with
+ * `Content-Type: application/x-www-form-urlencoded`. Top-level scalar fields
+ * are passed through; nested objects/arrays (`item`, `blocks`, `attachments`,
+ * `expression_attributes`, `expression_values`) are JSON-stringified.
  */
+function decodeBody(init: RequestInit | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const body = init?.body;
+  if (!body) return out;
 
-import { assertEquals, assertExists } from "@std/assert";
-import { createMockSlackClient } from "../mocks/slack_client.ts";
-
-// Type definitions for mock client parameters
-interface DatastorePutParams {
-  datastore: string;
-  item: Record<string, unknown>;
-}
-
-interface ChatPostMessageParams {
-  channel: string;
-  text?: string;
-  blocks?: unknown[];
-  thread_ts?: string;
-}
-
-interface ConversationsMembersParams {
-  channel: string;
-}
-
-Deno.test("create_decision integration - should create decision and post message", async () => {
-  const mockClient = createMockSlackClient();
-
-  // Simulate the create_decision function behavior
-  const inputs = {
-    decision_name: "Adopt TypeScript",
-    proposal: "We should adopt TypeScript for all new projects",
-    success_criteria: "simple_majority",
-    deadline: "2026-02-15",
-    channel_id: "C123456",
-    creator_id: "U123456",
+  const parseStringValue = (key: string, raw: string): unknown => {
+    if (key === "limit") {
+      const n = Number.parseInt(raw, 10);
+      return Number.isFinite(n) ? n : raw;
+    }
+    if (raw === "true") return true;
+    if (raw === "false") return false;
+    // Best-effort JSON parse for nested fields. Falling back to the raw string
+    // is fine — `String(body.x)` callers below tolerate either shape.
+    if (
+      key === "item" ||
+      key === "blocks" ||
+      key === "attachments" ||
+      key === "expression_attributes" ||
+      key === "expression_values"
+    ) {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return raw;
+      }
+    }
+    return raw;
   };
 
-  // Mock the decision creation
-  const decisionId = "1234567890.123456";
-  const decision = {
-    id: decisionId,
-    name: inputs.decision_name,
-    proposal: inputs.proposal,
-    success_criteria: inputs.success_criteria,
-    deadline: inputs.deadline,
-    channel_id: inputs.channel_id,
-    creator_id: inputs.creator_id,
-    message_ts: "",
-    status: "active",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  if (body instanceof URLSearchParams) {
+    for (const [k, v] of body.entries()) out[k] = parseStringValue(k, v);
+    return out;
+  }
+  if (body instanceof FormData) {
+    for (const [k, v] of body.entries()) {
+      if (typeof v === "string") out[k] = parseStringValue(k, v);
+      else out[k] = v;
+    }
+    return out;
+  }
+  if (typeof body === "string") {
+    try {
+      Object.assign(out, JSON.parse(body));
+    } catch {
+      // ignore — not JSON
+    }
+    return out;
+  }
+  return out;
+}
 
-  // Save decision to datastore
-  await mockClient.apps.datastore.put({
-    datastore: "decisions",
-    item: decision,
-  });
+/**
+ * Dispatch a single decoded Slack web-API call to the corresponding
+ * `MockSlackClient` method. Throws on unrecognised methods so test authors
+ * notice when a new SDK call appears.
+ */
+async function dispatch(
+  client: MockSlackClient,
+  method: string,
+  body: Record<string, unknown>,
+): Promise<unknown> {
+  const cursor = typeof body.cursor === "string" ? body.cursor : undefined;
+  const limit = typeof body.limit === "number" ? body.limit : undefined;
 
-  // Post message to channel
-  const messageResponse = await mockClient.chat.postMessage({
-    channel: inputs.channel_id,
-    text: `New decision: ${inputs.decision_name}`,
-    blocks: [
-      {
-        type: "header",
-        text: {
-          type: "plain_text",
-          text: `🗳️ ${inputs.decision_name}`,
-        },
-      },
-    ],
-  });
+  switch (method) {
+    case "team.info":
+      return await client.team.info();
 
-  // Verify datastore.put was called
-  const putCalls = mockClient.getCallsFor("apps.datastore.put");
-  assertEquals(putCalls.length, 1);
-  assertEquals(
-    (putCalls[0].params as DatastorePutParams).datastore,
-    "decisions",
-  );
-  assertEquals(
-    (putCalls[0].params as DatastorePutParams).item.name,
-    inputs.decision_name,
-  );
+    case "users.info":
+      return await client.users.info({ user: String(body.user ?? "") });
 
-  // Verify chat.postMessage was called
-  const postMessageCalls = mockClient.getCallsFor("chat.postMessage");
-  assertEquals(postMessageCalls.length, 1);
-  assertEquals(
-    (postMessageCalls[0].params as ChatPostMessageParams).channel,
-    inputs.channel_id,
-  );
+    case "usergroups.list": {
+      const args: UsergroupsListArgs = { cursor, limit };
+      return await client.usergroups.list(args);
+    }
 
-  // Verify message was posted successfully
-  assertEquals(messageResponse.ok, true);
-  assertExists(messageResponse.ts);
-});
+    case "usergroups.users.list": {
+      const args: UsergroupsUsersListArgs = {
+        usergroup: String(body.usergroup ?? ""),
+        cursor,
+        limit,
+      };
+      return await client.usergroups.users.list(args);
+    }
 
-Deno.test("create_decision integration - should fetch channel members", async () => {
-  const mockClient = createMockSlackClient();
+    case "conversations.members": {
+      const args: ConversationsMembersArgs = {
+        channel: String(body.channel ?? ""),
+        cursor,
+        limit,
+      };
+      return await client.conversations.members(args);
+    }
 
-  const channelId = "C123456";
+    case "chat.postMessage": {
+      const args: ChatPostMessageArgs = {
+        channel: String(body.channel ?? ""),
+        text: typeof body.text === "string" ? body.text : undefined,
+        blocks: Array.isArray(body.blocks)
+          ? (body.blocks as ChatPostMessageArgs["blocks"])
+          : undefined,
+        thread_ts: typeof body.thread_ts === "string"
+          ? body.thread_ts
+          : undefined,
+      };
+      return await client.chat.postMessage(args);
+    }
 
-  // Fetch channel members
-  const membersResponse = await mockClient.conversations.members({
-    channel: channelId,
-  });
+    case "chat.postEphemeral":
+      return await client.chat.postEphemeral({
+        channel: String(body.channel ?? ""),
+        user: String(body.user ?? ""),
+        text: typeof body.text === "string" ? body.text : undefined,
+      });
 
-  // Verify conversations.members was called
-  const membersCalls = mockClient.getCallsFor("conversations.members");
-  assertEquals(membersCalls.length, 1);
-  assertEquals(
-    (membersCalls[0].params as ConversationsMembersParams).channel,
-    channelId,
-  );
+    case "chat.update": {
+      const args: ChatUpdateArgs = {
+        channel: String(body.channel ?? ""),
+        ts: String(body.ts ?? ""),
+        text: typeof body.text === "string" ? body.text : undefined,
+        blocks: Array.isArray(body.blocks)
+          ? (body.blocks as ChatUpdateArgs["blocks"])
+          : undefined,
+      };
+      return await client.chat.update(args);
+    }
 
-  // Verify members were returned
-  assertEquals(membersResponse.ok, true);
-  assertExists(membersResponse.members);
-  assertEquals(membersResponse.members!.length > 0, true);
-});
+    case "chat.delete":
+      return await client.chat.delete({
+        channel: String(body.channel ?? ""),
+        ts: String(body.ts ?? ""),
+      });
 
-Deno.test("create_decision integration - should validate required inputs", () => {
-  // Test that required inputs are validated
-  const requiredFields = [
-    "decision_name",
-    "proposal",
-    "success_criteria",
-    "deadline",
-    "channel_id",
-    "creator_id",
-  ];
+    case "pins.list": {
+      const args: PinsListArgs = { channel: String(body.channel ?? "") };
+      return await client.pins.list(args);
+    }
 
-  const inputs = {
-    decision_name: "Test Decision",
-    proposal: "Test proposal",
-    success_criteria: "simple_majority",
-    deadline: "2026-02-15",
-    channel_id: "C123456",
-    creator_id: "U123456",
-  };
+    case "pins.add": {
+      const args: PinsAddArgs = {
+        channel: String(body.channel ?? ""),
+        timestamp: String(body.timestamp ?? ""),
+      };
+      return await client.pins.add(args);
+    }
 
-  // Verify all required fields are present
-  requiredFields.forEach((field) => {
-    assertExists(inputs[field as keyof typeof inputs]);
-  });
-});
+    case "pins.remove": {
+      const args: PinsRemoveArgs = {
+        channel: String(body.channel ?? ""),
+        timestamp: String(body.timestamp ?? ""),
+      };
+      return await client.pins.remove(args);
+    }
 
-Deno.test("create_decision integration - should support different success criteria", async () => {
-  const mockClient = createMockSlackClient();
+    case "apps.datastore.get": {
+      const args: DatastoreGetArgs = {
+        datastore: String(body.datastore ?? ""),
+        id: String(body.id ?? ""),
+      };
+      return await client.apps.datastore.get(args);
+    }
 
-  const successCriteriaOptions = [
-    "simple_majority",
-    "super_majority",
-    "unanimous",
-  ];
+    case "apps.datastore.put": {
+      const args: DatastorePutArgs<unknown> = {
+        datastore: String(body.datastore ?? ""),
+        item: body.item,
+      };
+      return await client.apps.datastore.put(args);
+    }
 
-  for (const criteria of successCriteriaOptions) {
-    mockClient.clearCalls();
+    case "apps.datastore.query": {
+      const args: DatastoreQueryArgs = {
+        datastore: String(body.datastore ?? ""),
+        expression: typeof body.expression === "string"
+          ? body.expression
+          : undefined,
+        expression_attributes: body.expression_attributes as DatastoreQueryArgs[
+          "expression_attributes"
+        ],
+        expression_values: body.expression_values as DatastoreQueryArgs[
+          "expression_values"
+        ],
+        cursor,
+        limit,
+      };
+      return await client.apps.datastore.query(args);
+    }
 
-    const decision = {
-      id: `decision_${criteria}`,
-      name: `Test ${criteria}`,
-      proposal: "Test proposal",
-      success_criteria: criteria,
-      deadline: "2026-02-15",
-      channel_id: "C123456",
-      creator_id: "U123456",
-      message_ts: "",
-      status: "active",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    case "apps.datastore.delete": {
+      const args: DatastoreDeleteArgs = {
+        datastore: String(body.datastore ?? ""),
+        id: String(body.id ?? ""),
+      };
+      return await client.apps.datastore.delete(args);
+    }
 
-    await mockClient.apps.datastore.put({
-      datastore: "decisions",
-      item: decision,
+    default:
+      throw new Error(`fetch bridge: unsupported method "${method}"`);
+  }
+}
+
+/**
+ * Install a `globalThis.fetch` patch that routes Slack web-API calls to
+ * `client`. Returns a disposer that restores the previous `fetch`.
+ */
+function installFetchBridge(client: MockSlackClient): () => void {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (
+    input: Request | URL | string,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const url = String(input);
+    const m = /\/api\/([a-zA-Z._]+)/.exec(url);
+    if (!m) {
+      // Pass through any non-Slack fetch.
+      return await realFetch(input, init);
+    }
+    const method = m[1];
+    const body = decodeBody(init);
+    let result: unknown;
+    try {
+      result = await dispatch(client, method, body);
+    } catch (err) {
+      result = { ok: false, error: String(err) };
+    }
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
     });
+  };
+  return () => {
+    globalThis.fetch = realFetch;
+  };
+}
 
-    const putCalls = mockClient.getCallsFor("apps.datastore.put");
-    assertEquals(putCalls.length, 1);
-    assertEquals(
-      (putCalls[0].params as DatastorePutParams).item.success_criteria,
-      criteria,
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Pick a deadline calendar date `nDays` ahead in UTC, formatted `YYYY-MM-DD`.
+ * Used by tests that need the deadline simply to be in the future.
+ */
+function futureDate(nDays: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + nDays);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Drive the SlackFunction-wrapped default export with a synthetic function
+ * context. The SDK's enrichContext discards `client`, so we don't pass one —
+ * the bridge installed by `installFetchBridge` takes its place.
+ */
+async function driveCreate(
+  inputs: Record<string, unknown>,
+): Promise<unknown> {
+  // The SDK takes a single positional context object. We treat the wrapper as
+  // an opaque async function rather than typing the SDK's broader internals.
+  const fn = createDecision as unknown as (ctx: unknown) => Promise<unknown>;
+  return await fn({
+    inputs,
+    env: {},
+    token: "xoxb-test",
+    team_id: "T_TEST",
+    enterprise_id: "",
+  });
+}
+
+/**
+ * Drive a block-action handler chained on the function. `default.blockActions`
+ * is a method on the wrapper instance — it dispatches via `this.matchHandler`,
+ * so we invoke it with `Function.prototype.call`.
+ */
+async function driveBlockAction(
+  actionId: string,
+  decisionId: string,
+  args: { userId: string; channelId: string; messageTs: string },
+): Promise<void> {
+  // The SlackFunction wrapper attaches `blockActions` as a method on itself
+  // and references `this.matchHandler` internally — we therefore have to
+  // invoke it via `Function.prototype.call(wrapper, ctx)`. Typing it through
+  // `unknown` keeps `any` out of the test surface.
+  const wrapper = createDecision as unknown as {
+    blockActions: (this: unknown, ctx: unknown) => Promise<void>;
+  };
+  const ctx = {
+    action: { action_id: actionId, value: decisionId },
+    body: {
+      user: { id: args.userId },
+      container: { channel_id: args.channelId, message_ts: args.messageTs },
+    },
+    env: {},
+    token: "xoxb-test",
+    team_id: "T_TEST",
+    enterprise_id: "",
+  };
+  await wrapper.blockActions.call(wrapper, ctx);
+}
+
+/**
+ * Common voter-context inputs. Tests override individual fields.
+ */
+function baseInputs(
+  over: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    decision_name: "Adopt Deno 2",
+    proposal: "Migrate the codebase to Deno 2.x.",
+    required_voters: ["U1"],
+    required_usergroups: "",
+    include_channel_members: false,
+    success_criteria: "simple_majority",
+    deadline: futureDate(30),
+    channel_id: "C0001",
+    creator_id: "U_ALICE",
+    ...over,
+  };
+}
+
+/**
+ * Pull the most-recent decision row written to the `decisions` table from a
+ * mock's recorded `apps.datastore.put` calls.
+ */
+function getLastDecisionPut(mock: MockSlackClient): DecisionRecord | undefined {
+  const puts = mock.getCallsFor("apps.datastore.put");
+  for (let i = puts.length - 1; i >= 0; i--) {
+    const args = puts[i].args as DatastorePutArgs<unknown>;
+    if (args.datastore === "decisions") {
+      return args.item as DecisionRecord;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * All voter rows written to the `voters` table, in put order.
+ */
+function getVoterPuts(mock: MockSlackClient): VoterRecord[] {
+  const out: VoterRecord[] = [];
+  for (const c of mock.getCallsFor("apps.datastore.put")) {
+    const args = c.args as DatastorePutArgs<unknown>;
+    if (args.datastore === "voters") out.push(args.item as VoterRecord);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Test 1 — UUID format on `decision_id` (SPEC §8.4 step 1).
+// ---------------------------------------------------------------------------
+
+Deno.test("create_decision — persisted decision_id matches the canonical UUID regex", async () => {
+  const mock = new MockSlackClient();
+  mock.setUserInfo("U1", { is_bot: false, deleted: false });
+  const restore = installFetchBridge(mock);
+  try {
+    const result = await driveCreate(
+      baseInputs({ required_voters: ["U1"], deadline: futureDate(14) }),
     );
+    // SPEC §8.7 — successful create returns `{ completed: false }`.
+    assertEquals(result, { completed: false });
+
+    const decision = getLastDecisionPut(mock);
+    assert(decision !== undefined, "expected a decision row to be persisted");
+    assertMatch(decision.id, UUID_RE);
+    // The same UUID is also emitted as each button's `value` in chat.postMessage.
+    const post = mock.getCallsFor("chat.postMessage")[0]
+      ?.args as ChatPostMessageArgs;
+    assert(post !== undefined, "expected chat.postMessage to have been called");
+    const blocks = post.blocks ?? [];
+    const actions = blocks.find((b) => b.type === "actions");
+    assert(
+      actions !== undefined && "elements" in actions,
+      "expected an actions block",
+    );
+    for (const el of actions.elements) {
+      if ("action_id" in el && typeof el.value === "string") {
+        assertEquals(el.value, decision.id);
+        assertMatch(el.value, UUID_RE);
+      }
+    }
+  } finally {
+    restore();
   }
 });
 
-Deno.test("create_decision integration - should handle custom deadline", async () => {
-  const mockClient = createMockSlackClient();
+// ---------------------------------------------------------------------------
+// Test 2 — TZ-resolved deadline (SPEC §8.3, §19).
+// ---------------------------------------------------------------------------
 
-  const customDeadline = "2026-03-15";
-  const decision = {
-    id: "decision_custom_deadline",
-    name: "Test Decision",
-    proposal: "Test proposal",
-    success_criteria: "simple_majority",
-    deadline: customDeadline,
-    channel_id: "C123456",
-    creator_id: "U123456",
-    message_ts: "",
-    status: "active",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+Deno.test("create_decision — GMT deadline resolves to 23:59:59.999Z", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
+  mock.setUserInfo("U1", { is_bot: false, deleted: false });
+  const restore = installFetchBridge(mock);
+  try {
+    // 9 December 2026 is GMT (no DST). End-of-day local == end-of-day UTC.
+    const result = await driveCreate(
+      baseInputs({ required_voters: ["U1"], deadline: "2026-12-09" }),
+    );
+    assertEquals(result, { completed: false });
 
-  await mockClient.apps.datastore.put({
-    datastore: "decisions",
-    item: decision,
-  });
+    const decision = getLastDecisionPut(mock);
+    assert(decision !== undefined);
+    assert(
+      decision.deadline_resolved.endsWith("23:59:59.999Z"),
+      `GMT deadline expected to end with 23:59:59.999Z; got ${decision.deadline_resolved}`,
+    );
+    assertEquals(decision.deadline_tz, "Europe/London");
 
-  const putCalls = mockClient.getCallsFor("apps.datastore.put");
-  assertEquals(putCalls.length, 1);
-  assertEquals(
-    (putCalls[0].params as DatastorePutParams).item.deadline,
-    customDeadline,
-  );
+    // Block Kit message renders the human deadline including the tz abbrev.
+    const post = mock.getCallsFor("chat.postMessage")[0]
+      ?.args as ChatPostMessageArgs;
+    const serialised = JSON.stringify(post.blocks ?? []);
+    assert(
+      /\bGMT\b/.test(serialised),
+      `expected the rendered message to mention GMT; got: ${
+        serialised.slice(0, 400)
+      }`,
+    );
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("create_decision — BST deadline resolves to 22:59:59.999Z and renders BST", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
+  mock.setUserInfo("U1", { is_bot: false, deleted: false });
+  const restore = installFetchBridge(mock);
+  try {
+    // Pick a date that is firmly inside BST (mid-July) and far enough out to
+    // never be in the past on the test runner's clock.
+    const result = await driveCreate(
+      baseInputs({ required_voters: ["U1"], deadline: "2099-07-15" }),
+    );
+    assertEquals(result, { completed: false });
+
+    const decision = getLastDecisionPut(mock);
+    assert(decision !== undefined);
+    assert(
+      decision.deadline_resolved.endsWith("22:59:59.999Z"),
+      `BST deadline expected to end with 22:59:59.999Z; got ${decision.deadline_resolved}`,
+    );
+    assertEquals(decision.deadline_tz, "Europe/London");
+
+    const post = mock.getCallsFor("chat.postMessage")[0]
+      ?.args as ChatPostMessageArgs;
+    const serialised = JSON.stringify(post.blocks ?? []);
+    assert(
+      /\bBST\b/.test(serialised),
+      `expected the rendered message to mention BST; got: ${
+        serialised.slice(0, 400)
+      }`,
+    );
+  } finally {
+    restore();
+  }
 });
 
 // ---------------------------------------------------------------------------
-// Eventual consistency: vote merge logic
+// Test 3 — Bot/USLACKBOT/deleted filter is uniform across voter sources
+// (SPEC §8.2.3, audit invariant 14).
 // ---------------------------------------------------------------------------
 
-Deno.test(
-  "create_decision integration - vote merge adds vote missing from query results",
-  () => {
-    const user_id = "U123456";
-    const decision_id = "decision1";
-    const now = new Date().toISOString();
+Deno.test("create_decision — bot, deleted, and USLACKBOT users are excluded uniformly", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
+  // Individual humans
+  mock.setUserInfo("U_HUMAN_1", { is_bot: false, deleted: false });
+  mock.setUserInfo("U_HUMAN_2", { is_bot: false, deleted: false });
+  // Filtered-out cases
+  mock.setUserInfo("U_BOT", { is_bot: true });
+  mock.setUserInfo("U_DELETED", {});
+  mock.setUserDeleted("U_DELETED");
+  // USLACKBOT — even without is_bot:true the filter MUST exclude it.
+  mock.setUserInfo("USLACKBOT", { is_bot: false, deleted: false });
 
-    const currentVote = {
-      id: `${decision_id}_${user_id}`,
-      decision_id,
-      user_id,
-      vote_type: "yes",
-      voted_at: now,
-    };
+  // Add a usergroup whose members include a deleted user, to exercise the
+  // bot-filter on the usergroup expansion path as well.
+  mock.setUsergroupsList([{ id: "S100", handle: "team", name: "Team" }]);
+  mock.setUsergroupMembers("S100", ["U_HUMAN_2", "U_BOT", "U_DELETED"]);
 
-    // Simulate stale query results that do not yet contain the current user's vote
-    const queryItems: Record<string, unknown>[] = [];
+  const restore = installFetchBridge(mock);
+  try {
+    const result = await driveCreate(
+      baseInputs({
+        required_voters: ["U_HUMAN_1", "U_BOT", "USLACKBOT"],
+        required_usergroups: "@team",
+      }),
+    );
+    assertEquals(result, { completed: false });
 
-    const mergedVotes = [
-      ...queryItems.filter((v) => v.user_id !== user_id),
-      currentVote,
-    ];
+    const decision = getLastDecisionPut(mock);
+    assert(decision !== undefined);
+    // R counts only the two humans; the bot, deleted, and USLACKBOT entries
+    // are filtered uniformly across the individual + usergroup sources.
+    assertEquals(decision.required_voters_count, 2);
 
-    assertEquals(mergedVotes.length, 1);
-    assertEquals(mergedVotes[0].user_id, user_id);
-    assertEquals(mergedVotes[0].vote_type, "yes");
-  },
-);
+    const voterRows = getVoterPuts(mock);
+    const persistedVoterIds = voterRows.map((v) => v.user_id).sort();
+    assertEquals(persistedVoterIds, ["U_HUMAN_1", "U_HUMAN_2"]);
 
-Deno.test(
-  "create_decision integration - vote merge replaces stale vote already in query results",
-  () => {
-    const user_id = "U123456";
-    const decision_id = "decision1";
-    const now = new Date().toISOString();
+    // Sanity: the filtered IDs should NOT appear in any voter row.
+    for (const v of voterRows) {
+      assert(
+        v.user_id !== "U_BOT" && v.user_id !== "USLACKBOT" &&
+          v.user_id !== "U_DELETED",
+        `unexpected non-human voter row: ${v.user_id}`,
+      );
+    }
+  } finally {
+    restore();
+  }
+});
 
-    const currentVote = {
-      id: `${decision_id}_${user_id}`,
-      decision_id,
-      user_id,
-      vote_type: "no", // changed from yes → no
-      voted_at: now,
-    };
+// ---------------------------------------------------------------------------
+// Test 4 — Datastore put failure on the decision row aborts cleanly
+// (SPEC §8.4 step 3, audit invariant 12).
+// ---------------------------------------------------------------------------
 
-    // Simulate stale query results containing the old vote (yes) for the user
-    const queryItems: Record<string, unknown>[] = [
-      {
-        id: `${decision_id}_${user_id}`,
-        decision_id,
-        user_id,
-        vote_type: "yes", // stale
-        voted_at: "2026-01-01T00:00:00.000Z",
-      },
-      {
-        id: `${decision_id}_U789`,
-        decision_id,
-        user_id: "U789",
-        vote_type: "yes",
-        voted_at: "2026-01-01T00:00:00.000Z",
-      },
-    ];
+Deno.test("create_decision — failed datastore put on decision row returns error and writes nothing else", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
+  mock.setUserInfo("U1", { is_bot: false, deleted: false });
+  mock.forceFailure("apps.datastore.put", "internal_error");
 
-    const mergedVotes = [
-      ...queryItems.filter((v) => v.user_id !== user_id),
-      currentVote,
-    ];
+  const restore = installFetchBridge(mock);
+  try {
+    const result = await driveCreate(
+      baseInputs({ required_voters: ["U1"], deadline: futureDate(14) }),
+    ) as { error?: string; completed?: boolean };
+    assert(typeof result.error === "string", "expected an error response");
+    assertMatch(result.error, /Failed to create decision/);
 
-    assertEquals(mergedVotes.length, 2);
-    const userVote = mergedVotes.find((v) => v.user_id === user_id);
-    assertExists(userVote);
-    assertEquals(userVote.vote_type, "no");
-    // Other voter's vote is preserved
-    const otherVote = mergedVotes.find((v) => v.user_id === "U789");
-    assertExists(otherVote);
-    assertEquals(otherVote.vote_type, "yes");
-  },
-);
+    // No voter rows were attempted (the decision put came first and failed).
+    const voterRows = getVoterPuts(mock);
+    assertEquals(voterRows.length, 0);
 
-Deno.test(
-  "create_decision integration - checkIfShouldFinalize skips votes query when knownVoteCount is provided",
-  async () => {
-    const mockClient = createMockSlackClient();
+    // No message was posted.
+    assertEquals(mock.getCallsFor("chat.postMessage").length, 0);
 
-    // Two required voters are returned by any query (voters datastore)
-    mockClient.setDatastoreQueryResults([
-      { id: "voter1", decision_id: "d1", user_id: "U1" },
-      { id: "voter2", decision_id: "d1", user_id: "U2" },
-    ]);
+    // Exactly one decision-row put attempt was made (the failing one).
+    const decisionPuts = mock
+      .getCallsFor("apps.datastore.put")
+      .filter((c) =>
+        (c.args as DatastorePutArgs<unknown>).datastore === "decisions"
+      );
+    assertEquals(decisionPuts.length, 1);
+  } finally {
+    restore();
+  }
+});
 
-    // Simulate the behavior of checkIfShouldFinalize with knownVoteCount:
-    // - Query voters (required)
-    // - Skip votes query (knownVoteCount replaces it)
-    // - Compare voter count with knownVoteCount
+// ---------------------------------------------------------------------------
+// Test 5 — `chat.postMessage` failure rolls every datastore row back
+// (SPEC §8.4 step 5).
+// ---------------------------------------------------------------------------
 
-    const votersResponse = await mockClient.apps.datastore.query({
-      datastore: "voters",
-      expression: "#decision_id = :decision_id",
-      expression_attributes: { "#decision_id": "decision_id" },
-      expression_values: { ":decision_id": "d1" },
+Deno.test("create_decision — chat.postMessage failure rolls back decision + voter rows", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
+  mock.setUserInfo("U1", { is_bot: false, deleted: false });
+  mock.setUserInfo("U2", { is_bot: false, deleted: false });
+  mock.forceFailure("chat.postMessage", "channel_not_found");
+
+  const restore = installFetchBridge(mock);
+  try {
+    const result = await driveCreate(
+      baseInputs({
+        required_voters: ["U1", "U2"],
+        deadline: futureDate(14),
+      }),
+    ) as { error?: string; completed?: boolean };
+    assert(typeof result.error === "string", "expected an error response");
+    assertMatch(result.error, /Failed to post decision message/);
+
+    // Inspect rollback. Every voter row that was put earlier must be deleted,
+    // along with the decision row itself.
+    const deletes = mock.getCallsFor("apps.datastore.delete");
+    const datastoresDeleted = deletes.map(
+      (c) => (c.args as DatastoreDeleteArgs).datastore,
+    );
+    // Decision row is the canary — it MUST appear in the delete list.
+    assert(
+      datastoresDeleted.includes("decisions"),
+      `expected a delete on "decisions"; got ${
+        JSON.stringify(datastoresDeleted)
+      }`,
+    );
+    // Two voter rows were written, so two voter deletes are expected.
+    const voterDeletes = deletes.filter(
+      (c) => (c.args as DatastoreDeleteArgs).datastore === "voters",
+    );
+    assertEquals(voterDeletes.length, 2);
+
+    // The voter rows targeted by the deletes match the IDs that were put.
+    const voterIdsDeleted = voterDeletes
+      .map((c) => (c.args as DatastoreDeleteArgs).id)
+      .sort();
+    const voterIdsPut = getVoterPuts(mock).map((v) => v.id).sort();
+    assertEquals(voterIdsDeleted, voterIdsPut);
+
+    // After rollback, neither the decision nor any voter remains in the store.
+    const decisionGet = await mock.apps.datastore.get<DecisionRecord>({
+      datastore: "decisions",
+      id: voterIdsPut[0].split("_")[0],
+    });
+    assert(
+      decisionGet.ok && decisionGet.item === undefined,
+      "decision row should have been deleted by rollback",
+    );
+    for (const vid of voterIdsPut) {
+      const got = await mock.apps.datastore.get<VoterRecord>({
+        datastore: "voters",
+        id: vid,
+      });
+      assert(
+        got.ok && got.item === undefined,
+        `voter row ${vid} should have been deleted by rollback`,
+      );
+    }
+  } finally {
+    restore();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Test 6 — Eventual-consistency vote-merge (SPEC §16.1 / §16.2).
+// ---------------------------------------------------------------------------
+//
+// These three cases drive the chained `vote_yes` / `vote_no` block-action
+// handler to verify the read-after-write merge defined in SPEC §16. The mock's
+// `setDatastoreQueryResults` returns a stale view of the `votes` table even
+// after a fresh put; the handler's `mergedVotes` array must reconcile this.
+
+Deno.test("create_decision (vote merge) — adds the just-cast vote when the post-put query returns empty", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
+
+  // Pre-seed an active decision with two required voters. R = 2, quorum = 1.
+  const decisionId = "11111111-2222-3333-4444-555555555555";
+  const decision: DecisionRecord = {
+    id: decisionId,
+    name: "Adopt Deno 2",
+    proposal: "Migrate the codebase to Deno 2.x.",
+    success_criteria: "simple_majority",
+    quorum: 1,
+    required_voters_count: 2,
+    deadline: futureDate(14),
+    deadline_resolved: new Date(Date.now() + 14 * 24 * 3600_000).toISOString(),
+    deadline_tz: "Europe/London",
+    channel_id: "C0001",
+    creator_id: "U_ALICE",
+    message_ts: "1715170800.000100",
+    status: "active",
+    created_at: "2026-05-08T09:00:00.000Z",
+    updated_at: "2026-05-08T09:00:00.000Z",
+  };
+  mock.setDatastoreItem(
+    "decisions",
+    decision as unknown as { id: string } & Record<string, unknown>,
+  );
+  // U1 & U2 are eligible voters; only U1 will click yes here.
+  mock.setDatastoreItem("voters", {
+    id: `${decisionId}_U1`,
+    decision_id: decisionId,
+    user_id: "U1",
+    is_active: true,
+    created_at: decision.created_at,
+  });
+  mock.setDatastoreItem("voters", {
+    id: `${decisionId}_U2`,
+    decision_id: decisionId,
+    user_id: "U2",
+    is_active: true,
+    created_at: decision.created_at,
+  });
+  // EVENTUAL-CONSISTENCY HOLE: the query returns an EMPTY votes list even
+  // after the handler put a fresh row. The merge must still surface U1's vote.
+  mock.setDatastoreQueryResults("votes", []);
+
+  const restore = installFetchBridge(mock);
+  try {
+    await driveBlockAction("vote_yes", decisionId, {
+      userId: "U1",
+      channelId: "C0001",
+      messageTs: "1715170800.000100",
     });
 
-    assertEquals(votersResponse.ok, true);
-    const voterCount = votersResponse.items!.length;
-    assertEquals(voterCount, 2);
+    // The post-vote chat.update reflects mergedVotes = [U1's just-cast vote].
+    const update = mock
+      .getCallsFor("chat.update")
+      .map((c) => c.args as ChatUpdateArgs)
+      .at(-1);
+    assert(update !== undefined, "expected a chat.update call after the vote");
+    const blocks = update.blocks ?? [];
+    const serialised = JSON.stringify(blocks);
+    // SPEC §9 step 9 — `*Votes:* 1/2` and `<@U1>` appear in the merged status.
+    assert(
+      serialised.includes("*Votes:* 1/2"),
+      `expected merged vote count 1/2 in chat.update blocks; got: ${serialised}`,
+    );
+    assert(
+      serialised.includes("<@U1>"),
+      `expected <@U1> mention in chat.update blocks; got: ${serialised}`,
+    );
+  } finally {
+    restore();
+  }
+});
 
-    // No votes query is issued; we use the merged count directly.
-    // Verify only one query was made (voters only, not votes).
-    const queryCalls = mockClient.getCallsFor("apps.datastore.query");
-    assertEquals(queryCalls.length, 1);
+Deno.test("create_decision (vote merge) — replaces a stale vote row with the just-cast vote", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
 
-    // When knownVoteCount equals voter count → should finalize
-    assertEquals(voterCount === 2, true);
+  // R = 3 so a single no vote does NOT deadlock simple-majority — the
+  // post-vote chat.update reflects the active-with-1-vote intermediate state
+  // and we can read the merged vote out of it.
+  const decisionId = "22222222-3333-4444-5555-666666666666";
+  const decision: DecisionRecord = {
+    id: decisionId,
+    name: "Adopt Deno 2",
+    proposal: "Migrate the codebase to Deno 2.x.",
+    success_criteria: "simple_majority",
+    quorum: 2,
+    required_voters_count: 3,
+    deadline: futureDate(14),
+    deadline_resolved: new Date(Date.now() + 14 * 24 * 3600_000).toISOString(),
+    deadline_tz: "Europe/London",
+    channel_id: "C0001",
+    creator_id: "U_ALICE",
+    message_ts: "1715170800.000200",
+    status: "active",
+    created_at: "2026-05-08T09:00:00.000Z",
+    updated_at: "2026-05-08T09:00:00.000Z",
+  };
+  mock.setDatastoreItem(
+    "decisions",
+    decision as unknown as { id: string } & Record<string, unknown>,
+  );
+  for (const uid of ["U1", "U2", "U3"]) {
+    mock.setDatastoreItem("voters", {
+      id: `${decisionId}_${uid}`,
+      decision_id: decisionId,
+      user_id: uid,
+      is_active: true,
+      created_at: decision.created_at,
+    });
+  }
+  // U1 has already voted YES previously (we'll simulate a vote-change to NO).
+  mock.setDatastoreItem("votes", {
+    id: `${decisionId}_U1`,
+    decision_id: decisionId,
+    user_id: "U1",
+    vote_type: "yes",
+    voted_at: "2026-05-08T10:00:00.000Z",
+  });
+  // EVENTUAL-CONSISTENCY HOLE: post-put query returns U1's STALE "yes" row.
+  mock.setDatastoreQueryResults("votes", [
+    {
+      id: `${decisionId}_U1`,
+      decision_id: decisionId,
+      user_id: "U1",
+      vote_type: "yes",
+      voted_at: "2026-05-08T10:00:00.000Z",
+    } as unknown as Record<string, unknown>,
+  ]);
 
-    // When knownVoteCount is one short → should not finalize yet
-    assertEquals(voterCount === 1, false);
-  },
-);
+  const restore = installFetchBridge(mock);
+  try {
+    await driveBlockAction("vote_no", decisionId, {
+      userId: "U1",
+      channelId: "C0001",
+      messageTs: "1715170800.000200",
+    });
+
+    // The latest persisted votes row is U1 = "no" (overwrote the stale "yes").
+    const votePuts = mock
+      .getCallsFor("apps.datastore.put")
+      .map((c) => c.args as DatastorePutArgs<unknown>)
+      .filter((a) => a.datastore === "votes")
+      .map((a) => a.item as VoteRecord);
+    const u1Vote = votePuts.find((v) => v.user_id === "U1");
+    assert(u1Vote !== undefined, "expected a votes-table put for U1");
+    assertEquals(u1Vote.vote_type, "no");
+
+    // The post-vote chat.update STILL only counts U1 as one voter (not two)
+    // — the stale "yes" row was filtered out and replaced by the new "no".
+    const update = mock
+      .getCallsFor("chat.update")
+      .map((c) => c.args as ChatUpdateArgs)
+      .at(-1);
+    assert(update !== undefined);
+    const serialised = JSON.stringify(update.blocks ?? []);
+    assert(
+      serialised.includes("*Votes:* 1/3"),
+      `expected merged vote count 1/3 (no double-counting); got: ${serialised}`,
+    );
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("create_decision (vote merge) — finalisation gate uses mergedVotes (no extra votes query)", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
+
+  // R = 1 — the very first vote completes quorum, triggering finalisation.
+  const decisionId = "33333333-4444-5555-6666-777777777777";
+  const decision: DecisionRecord = {
+    id: decisionId,
+    name: "Adopt Deno 2",
+    proposal: "Migrate the codebase to Deno 2.x.",
+    success_criteria: "simple_majority",
+    quorum: 1,
+    required_voters_count: 1,
+    deadline: futureDate(14),
+    deadline_resolved: new Date(Date.now() + 14 * 24 * 3600_000).toISOString(),
+    deadline_tz: "Europe/London",
+    channel_id: "C0001",
+    creator_id: "U_ALICE",
+    message_ts: "1715170800.000300",
+    status: "active",
+    created_at: "2026-05-08T09:00:00.000Z",
+    updated_at: "2026-05-08T09:00:00.000Z",
+  };
+  mock.setDatastoreItem(
+    "decisions",
+    decision as unknown as { id: string } & Record<string, unknown>,
+  );
+  mock.setDatastoreItem("voters", {
+    id: `${decisionId}_U1`,
+    decision_id: decisionId,
+    user_id: "U1",
+    is_active: true,
+    created_at: decision.created_at,
+  });
+  // The post-vote query returns an empty list — eventual consistency in action.
+  // If `checkIfShouldFinalize` mistakenly issued ANOTHER votes query, it would
+  // see `mergedVotes.length === 0` and refuse to finalise — but the real
+  // gate uses the in-memory mergedVotes (length 1) and proceeds.
+  mock.setDatastoreQueryResults("votes", []);
+
+  const restore = installFetchBridge(mock);
+  try {
+    // Snapshot the votes-query call count before driving the action.
+    const queriesBefore = mock
+      .getCallsFor("apps.datastore.query")
+      .filter((c) => (c.args as DatastoreQueryArgs).datastore === "votes")
+      .length;
+
+    await driveBlockAction("vote_yes", decisionId, {
+      userId: "U1",
+      channelId: "C0001",
+      messageTs: "1715170800.000300",
+    });
+
+    // SPEC §16.2 — exactly ONE post-put `votes` query (the merge step). The
+    // gate must NOT issue an extra one.
+    const queriesAfter = mock
+      .getCallsFor("apps.datastore.query")
+      .filter((c) => (c.args as DatastoreQueryArgs).datastore === "votes")
+      .length;
+    assertEquals(queriesAfter - queriesBefore, 1);
+
+    // Finalisation actually ran: the decision row was updated and the
+    // finalised message was posted.
+    const finalised = (mock
+      .getCallsFor("apps.datastore.put")
+      .map((c) => c.args as DatastorePutArgs<unknown>)
+      .filter((a) => a.datastore === "decisions")
+      .at(-1)?.item ?? undefined) as DecisionRecord | undefined;
+    assert(finalised !== undefined, "expected a decisions put on finalisation");
+    assert(
+      finalised.status === "approved" || finalised.status === "rejected",
+      `expected finalised status; got ${finalised.status}`,
+    );
+    assert(
+      typeof finalised.finalized_at === "string" &&
+        finalised.finalized_at.length > 0,
+      "expected finalized_at idempotency token to be set",
+    );
+  } finally {
+    restore();
+  }
+});

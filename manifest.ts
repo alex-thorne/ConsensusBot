@@ -1,28 +1,32 @@
+/**
+ * ConsensusBot v2.0 — Slack app manifest.
+ *
+ * SPEC: docs/REDEVELOPMENT_SPECIFICATION.md §4.
+ *
+ * The 13-scope `botScopes` list is final per §4 and MUST NOT be reduced;
+ * later waves only add entries when SPEC amendments require them.
+ */
 import { Manifest } from "deno-slack-sdk/mod.ts";
+
 import DecisionDatastore from "./datastores/decisions.ts";
 import VoteDatastore from "./datastores/votes.ts";
 import VoterDatastore from "./datastores/voters.ts";
-import CreateDecisionWorkflow from "./workflows/create_decision.ts";
-import SendRemindersWorkflow from "./workflows/send_reminders.ts";
+import VoteHistoryDatastore from "./datastores/vote_history.ts";
 
-/**
- * The app manifest contains the app's configuration. This
- * file defines attributes like app name and description.
- * https://api.slack.com/automation/manifest
- */
+import CreateDecisionWorkflow from "./workflows/create_decision.ts";
+import ProcessActiveDecisionsWorkflow from "./workflows/process_active_decisions.ts";
+
 export default Manifest({
   name: "ConsensusBot",
   description:
     "Facilitate team decision-making through collaborative consensus building",
   icon: "assets/icon.png",
-  workflows: [
-    CreateDecisionWorkflow,
-    SendRemindersWorkflow,
-  ],
+  workflows: [CreateDecisionWorkflow, ProcessActiveDecisionsWorkflow],
   datastores: [
     DecisionDatastore,
     VoteDatastore,
     VoterDatastore,
+    VoteHistoryDatastore,
   ],
   outgoingDomains: [],
   botScopes: [
@@ -31,7 +35,9 @@ export default Manifest({
     "chat:write.public",
     "datastore:read",
     "datastore:write",
+    "pins:read",
     "pins:write",
+    "team:read",
     "users:read",
     "usergroups:read",
     "channels:read",

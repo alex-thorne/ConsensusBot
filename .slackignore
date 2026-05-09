@@ -1,16 +1,7 @@
-# Slack Native files
-.slack/
-
-# Archives
+# Excluded from `slack deploy` per SPEC §3.
 archive/
-
-# Development
-*.log
-.DS_Store
-tmp/
-temp/
-
-# Documentation only
-MIGRATION_GUIDE.md
-DEVELOPMENT.md
-DEPLOYMENT.md
+tests/
+docs/
+*.md
+.github/
+.githooks/

@@ -1,99 +1,101 @@
+// ConsensusBot v2.0 — `CreateDecisionWorkflow` definition.
+//
+// SPEC sources of truth (read these BEFORE editing this file):
+//   - docs/REDEVELOPMENT_SPECIFICATION.md §7.1 (CreateDecisionWorkflow form schema)
+//   - docs/REDEVELOPMENT_SPECIFICATION.md §8   (CreateDecisionFunction inputs)
+//   - docs/REDEVELOPMENT_BUILD_PLAN.md  T-401 (this task)
+//
+// Single-file ownership: T-401 owns ONLY this file.
+//
+// `CreateDecisionFunction` (the `DefineFunction` value) is what `addStep`
+// expects; we import the named export from `functions/create_decision.ts`
+// (the default export there is the `SlackFunction` wrapper, which is the
+// runtime-handler form).
+
 import { DefineWorkflow, Schema } from "deno-slack-sdk/mod.ts";
 import { CreateDecisionFunction } from "../functions/create_decision.ts";
 
-/**
- * Workflow for creating a new consensus decision
- * Triggered by /consensus slash command
- */
 const CreateDecisionWorkflow = DefineWorkflow({
   callback_id: "create_decision_workflow",
   title: "Create Consensus Decision",
-  description: "Create a new decision and initiate voting",
+  description: "Start a new consensus decision",
   input_parameters: {
     properties: {
-      interactivity: {
-        type: Schema.slack.types.interactivity,
-      },
-      channel_id: {
-        type: Schema.slack.types.channel_id,
-      },
-      user_id: {
-        type: Schema.slack.types.user_id,
-      },
+      interactivity: { type: Schema.slack.types.interactivity },
+      channel_id: { type: Schema.slack.types.channel_id },
+      user_id: { type: Schema.slack.types.user_id },
     },
     required: ["interactivity", "channel_id", "user_id"],
   },
 });
 
-// Step 1: Open modal to collect decision details
-const decisionForm = CreateDecisionWorkflow.addStep(
+// Step 1 — `Schema.slack.functions.OpenForm` (SPEC §7.1).
+//
+// Eight fields, in the spec's order. The `required` list is exactly
+// `["decision_name","proposal","required_voters","success_criteria"]`.
+const formStep = CreateDecisionWorkflow.addStep(
   Schema.slack.functions.OpenForm,
   {
-    title: "New Consensus Decision",
+    title: "Create a Decision",
     interactivity: CreateDecisionWorkflow.inputs.interactivity,
-    submit_label: "Create Decision",
+    submit_label: "Create",
+    description:
+      "Set up the proposal, voters, success criterion, and deadline.",
     fields: {
       elements: [
         {
           name: "decision_name",
           title: "Decision Name",
           type: Schema.types.string,
-          description: "A clear title for this decision",
+          max_length: 200,
         },
         {
           name: "proposal",
-          title: "The Proposal",
+          title: "Proposal",
           type: Schema.types.string,
-          description: "Details of the target outcome and strategic alignment",
           long: true,
+          max_length: 2500,
         },
         {
           name: "required_voters",
           title: "Required Voters",
           type: Schema.types.array,
-          items: {
-            type: Schema.slack.types.user_id,
-          },
-          description: "Select the people who must vote on this decision",
+          items: { type: Schema.slack.types.user_id },
         },
         {
           name: "required_usergroups",
-          title: "Required User Groups (Optional)",
-          type: Schema.types.array,
-          items: {
-            type: Schema.slack.types.usergroup_id,
-          },
-          description:
-            "Select user groups whose members must vote on this decision",
+          title: "Required Usergroups (optional)",
+          type: Schema.types.string,
+          long: true,
         },
         {
           name: "include_channel_members",
           title: "Include all channel members",
           type: Schema.types.boolean,
-          description:
-            "When checked, all non-bot members of this channel will be added as required voters",
         },
         {
           name: "success_criteria",
           title: "Success Criteria",
           type: Schema.types.string,
-          description: "Threshold for consensus",
           enum: ["simple_majority", "super_majority", "unanimous"],
           choices: [
             {
               value: "simple_majority",
-              title: "Simple Majority (>50%)",
-              description: "More than half of votes must be yes",
+              title: "Simple Majority",
+              description:
+                "More yes than no votes; abstentions excluded; ≥50% participation required.",
             },
             {
               value: "super_majority",
-              title: "Supermajority (≥66%)",
-              description: "At least 66% of required voters must vote yes",
+              title: "Two-Thirds Majority",
+              description:
+                "Yes votes ≥ 2/3 of decisive (yes+no) votes; abstentions excluded; ≥66% participation required.",
             },
             {
               value: "unanimous",
-              title: "Unanimity (100%)",
-              description: "All votes must be yes (abstentions allowed)",
+              title: "Unanimity",
+              description:
+                "All decisive votes are yes; abstentions allowed; full participation required.",
             },
           ],
         },
@@ -101,7 +103,11 @@ const decisionForm = CreateDecisionWorkflow.addStep(
           name: "deadline",
           title: "Deadline",
           type: Schema.slack.types.date,
-          description: "Date by which votes must be cast",
+        },
+        {
+          name: "quorum_override",
+          title: "Quorum Override (optional)",
+          type: Schema.types.integer,
         },
       ],
       required: [
@@ -114,15 +120,19 @@ const decisionForm = CreateDecisionWorkflow.addStep(
   },
 );
 
-// Step 2: Create the decision and post voting message
+// Step 2 — invoke `CreateDecisionFunction` (SPEC §7.1, §8).
+//
+// Form outputs map 1:1 to the function's per-§8.1 inputs; `channel_id` and
+// `creator_id` come from the workflow's slash-command trigger inputs.
 CreateDecisionWorkflow.addStep(CreateDecisionFunction, {
-  decision_name: decisionForm.outputs.fields.decision_name,
-  proposal: decisionForm.outputs.fields.proposal,
-  required_voters: decisionForm.outputs.fields.required_voters,
-  required_usergroups: decisionForm.outputs.fields.required_usergroups,
-  include_channel_members: decisionForm.outputs.fields.include_channel_members,
-  success_criteria: decisionForm.outputs.fields.success_criteria,
-  deadline: decisionForm.outputs.fields.deadline,
+  decision_name: formStep.outputs.fields.decision_name,
+  proposal: formStep.outputs.fields.proposal,
+  required_voters: formStep.outputs.fields.required_voters,
+  required_usergroups: formStep.outputs.fields.required_usergroups,
+  include_channel_members: formStep.outputs.fields.include_channel_members,
+  success_criteria: formStep.outputs.fields.success_criteria,
+  deadline: formStep.outputs.fields.deadline,
+  quorum_override: formStep.outputs.fields.quorum_override,
   channel_id: CreateDecisionWorkflow.inputs.channel_id,
   creator_id: CreateDecisionWorkflow.inputs.user_id,
 });
