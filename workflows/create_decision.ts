@@ -107,7 +107,7 @@ const formStep = CreateDecisionWorkflow.addStep(
           title: "Quorum Override",
           type: Schema.types.integer,
           description:
-            "Minimum total votes required before resolution. Leave blank to use defaults (simple-majority: ceil(R/2), super-majority: ceil(2R/3), unanimous: R).",
+            "Minimum total votes required before resolution. Leave blank to use defaults for the selected criteria: at least half (simple majority), at least two-thirds (super majority), or all voters (unanimous).",
         },
       ],
       required: [
