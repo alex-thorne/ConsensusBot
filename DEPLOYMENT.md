@@ -62,7 +62,9 @@ decisions.
 Code changes do **not** require re-running the trigger commands. Trigger
 definitions only need to be re-created if `triggers/consensus_command.ts`
 changes its shape, or if the schedule needs to be reset (in which case run
-`./scripts/deploy.sh` again).
+`./scripts/deploy.sh` again). If Slack reports a datastore
+`schema_compatibility_error`, pass through `--force` via
+`./scripts/deploy.sh --force`.
 
 ## Production isolation
 
