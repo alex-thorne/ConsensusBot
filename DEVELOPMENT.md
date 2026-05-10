@@ -59,6 +59,10 @@ The canonical task list (defined in `deno.jsonc`) is:
 Run `deno task ci` from a clean tree before pushing — the GitHub Actions
 workflow runs the same commands and will fail otherwise.
 
+Manifest schema guard: `deno task test` includes
+`tests/manifest_open_form_validation_test.ts`, which fails if an OpenForm string
+field uses unsupported properties such as `max_length` or `min_length`.
+
 ## Project structure
 
 The full layout is documented in
