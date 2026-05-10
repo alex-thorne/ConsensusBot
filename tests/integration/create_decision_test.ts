@@ -598,7 +598,69 @@ Deno.test("create_decision — bot, deleted, and USLACKBOT users are excluded un
 });
 
 // ---------------------------------------------------------------------------
-// Test 4 — Datastore put failure on the decision row aborts cleanly
+// Test 4 — quorum override of 0 falls back to criterion default
+// (Issue: quorum_override UX; SPEC §8.3 default quorum rules).
+// ---------------------------------------------------------------------------
+
+Deno.test("create_decision — quorum_override 0 uses default quorum", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
+  mock.setUserInfo("U1", { is_bot: false, deleted: false });
+  mock.setUserInfo("U2", { is_bot: false, deleted: false });
+  mock.setUserInfo("U3", { is_bot: false, deleted: false });
+  const restore = installFetchBridge(mock);
+  try {
+    const result = await driveCreate(
+      baseInputs({
+        required_voters: ["U1", "U2", "U3"],
+        success_criteria: "simple_majority",
+        quorum_override: 0,
+      }),
+    );
+    assertEquals(result, { completed: false });
+
+    const decision = getLastDecisionPut(mock);
+    assert(decision !== undefined);
+    assertEquals(decision.required_voters_count, 3);
+    assertEquals(decision.quorum, 2);
+  } finally {
+    restore();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Test 5 — negative quorum override falls back to criterion default
+// (Issue: quorum_override UX; SPEC §8.3 default quorum rules).
+// ---------------------------------------------------------------------------
+
+Deno.test("create_decision — negative quorum_override uses default quorum", async () => {
+  const mock = new MockSlackClient();
+  mock.setTeamTz("Europe/London");
+  mock.setUserInfo("U1", { is_bot: false, deleted: false });
+  mock.setUserInfo("U2", { is_bot: false, deleted: false });
+  mock.setUserInfo("U3", { is_bot: false, deleted: false });
+  const restore = installFetchBridge(mock);
+  try {
+    const result = await driveCreate(
+      baseInputs({
+        required_voters: ["U1", "U2", "U3"],
+        success_criteria: "simple_majority",
+        quorum_override: -3,
+      }),
+    );
+    assertEquals(result, { completed: false });
+
+    const decision = getLastDecisionPut(mock);
+    assert(decision !== undefined);
+    assertEquals(decision.required_voters_count, 3);
+    assertEquals(decision.quorum, 2);
+  } finally {
+    restore();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Test 6 — Datastore put failure on the decision row aborts cleanly
 // (SPEC §8.4 step 3, audit invariant 12).
 // ---------------------------------------------------------------------------
 
@@ -636,7 +698,7 @@ Deno.test("create_decision — failed datastore put on decision row returns erro
 });
 
 // ---------------------------------------------------------------------------
-// Test 5 — `chat.postMessage` failure rolls every datastore row back
+// Test 7 — `chat.postMessage` failure rolls every datastore row back
 // (SPEC §8.4 step 5).
 // ---------------------------------------------------------------------------
 
@@ -709,7 +771,7 @@ Deno.test("create_decision — chat.postMessage failure rolls back decision + vo
 });
 
 // ---------------------------------------------------------------------------
-// Test 6 — Eventual-consistency vote-merge (SPEC §16.1 / §16.2).
+// Test 8 — Eventual-consistency vote-merge (SPEC §16.1 / §16.2).
 // ---------------------------------------------------------------------------
 //
 // These three cases drive the chained `vote_yes` / `vote_no` block-action
