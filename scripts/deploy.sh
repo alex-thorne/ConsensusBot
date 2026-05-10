@@ -213,19 +213,41 @@ JSON
 echo "    wrote ${TMP_TRIGGER_DEF}"
 
 echo "==> Checking for existing scheduled trigger \"${SCHEDULED_TRIGGER_NAME}\""
-if has_trigger_named "${SCHEDULED_TRIGGER_NAME}"; then
-  echo "    scheduled trigger already exists; skipping create"
-else
-  echo "    not found; creating via \`slack triggers create\`"
-  slack triggers create --trigger-def "${TMP_TRIGGER_DEF}"
-fi
+set +e
+has_trigger_named "${SCHEDULED_TRIGGER_NAME}"
+scheduled_trigger_rc=$?
+set -e
+case "${scheduled_trigger_rc}" in
+  0)
+    echo "    scheduled trigger already exists; skipping create"
+    ;;
+  1)
+    echo "    not found; creating via \`slack triggers create\`"
+    slack triggers create --trigger-def "${TMP_TRIGGER_DEF}"
+    ;;
+  *)
+    echo "ERROR: cannot determine trigger state; aborting deploy to avoid duplicates." >&2
+    exit 1
+    ;;
+esac
 
 echo "==> Checking for existing slash-command trigger \"${SHORTCUT_TRIGGER_NAME}\""
-if has_trigger_named "${SHORTCUT_TRIGGER_NAME}"; then
-  echo "    slash-command trigger already exists; skipping create"
-else
-  echo "    not found; creating from ${CONSENSUS_COMMAND_TRIGGER_DEF}"
-  slack triggers create --trigger-def "${CONSENSUS_COMMAND_TRIGGER_DEF}"
-fi
+set +e
+has_trigger_named "${SHORTCUT_TRIGGER_NAME}"
+shortcut_trigger_rc=$?
+set -e
+case "${shortcut_trigger_rc}" in
+  0)
+    echo "    slash-command trigger already exists; skipping create"
+    ;;
+  1)
+    echo "    not found; creating from ${CONSENSUS_COMMAND_TRIGGER_DEF}"
+    slack triggers create --trigger-def "${CONSENSUS_COMMAND_TRIGGER_DEF}"
+    ;;
+  *)
+    echo "ERROR: cannot determine trigger state; aborting deploy to avoid duplicates." >&2
+    exit 1
+    ;;
+esac
 
 echo "==> Deploy complete. Run \`slack triggers list\` to verify."
