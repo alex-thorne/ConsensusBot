@@ -11,7 +11,8 @@
 #
 # What this script does
 # ---------------------
-# 1. Runs `slack deploy` to push the current app build to Slack ROSI.
+# 1. Runs `slack deploy` to push the current app build to Slack ROSI, forwarding
+#    any arguments passed to this script (for example `./scripts/deploy.sh --force`).
 # 2. Computes the next weekday (Mon–Fri) at 09:00:00 UTC as ISO-8601, because
 #    Slack rejects scheduled triggers whose `start_time` is in the past with
 #    `invalid_start_before_now` (SPEC §6.2). The static `start_time` literal in
@@ -182,8 +183,8 @@ has_trigger_named() {
 
 echo "==> ConsensusBot deploy starting (repo: ${REPO_ROOT})"
 
-echo "==> Running \`slack deploy\` (push current build to ROSI)"
-slack deploy
+echo "==> Running \`slack deploy\` (push current build to ROSI; forwarding script args)"
+slack deploy "$@"
 
 echo "==> Computing next weekday 09:00 UTC start_time"
 START_TIME="$(compute_next_weekday_start_time)"
