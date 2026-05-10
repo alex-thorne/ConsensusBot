@@ -1828,12 +1828,14 @@ export default SlackFunction(
 
     if (typeof inputs.quorum_override === "number") {
       const ov = inputs.quorum_override;
-      if (!Number.isInteger(ov) || ov < 1 || ov > R) {
-        return {
-          error: `quorum_override must be between 1 and ${R} (inclusive).`,
-        };
+      if (ov > 0) {
+        if (!Number.isInteger(ov) || ov > R) {
+          return {
+            error: `quorum_override must be between 1 and ${R} (inclusive).`,
+          };
+        }
+        quorum = ov;
       }
-      quorum = ov;
     }
 
     // ----- §8.4 Persist + post (datastore-write-before-message-post) --------

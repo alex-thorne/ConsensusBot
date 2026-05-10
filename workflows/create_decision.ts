@@ -62,7 +62,7 @@ const formStep = CreateDecisionWorkflow.addStep(
         },
         {
           name: "required_usergroups",
-          title: "Required Usergroups (optional)",
+          title: "Required Usergroups",
           type: Schema.types.string,
           long: true,
         },
@@ -104,8 +104,10 @@ const formStep = CreateDecisionWorkflow.addStep(
         },
         {
           name: "quorum_override",
-          title: "Quorum Override (optional)",
+          title: "Quorum Override",
           type: Schema.types.integer,
+          description:
+            "Minimum total votes required before resolution. Leave blank to use defaults for the selected criteria: half of required voters rounded up (simple majority), two-thirds rounded up (super majority), or all required voters (unanimous).",
         },
       ],
       required: [
