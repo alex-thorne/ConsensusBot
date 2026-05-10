@@ -18,20 +18,26 @@ the SPEC wins.
 ## First-time deploy
 
 ```bash
-slack login                                                       # OAuth in browser
-slack create                                                      # in repo root; pick workspace
-slack deploy                                                      # builds + deploys to Slack ROSI
-slack triggers create --trigger-def triggers/consensus_command.ts # /consensus shortcut
-./scripts/deploy.sh                                               # creates the schedule trigger
-slack triggers list                                               # verify both exist
+slack login          # OAuth in browser
+slack create         # in repo root; pick workspace
+slack deploy         # builds + deploys to Slack ROSI
+./scripts/deploy.sh  # creates both triggers idempotently
+slack triggers list  # verify both exist
 ```
 
 After `slack triggers list` you should see two triggers:
 
-1. The `/consensus` shortcut (created by the explicit `slack triggers create`
-   call).
+1. The `/consensus` shortcut trigger (created by `./scripts/deploy.sh`).
 2. The Mon–Fri 09:00 UTC schedule trigger that runs the
-   `process_active_decisions` workflow (created by `./scripts/deploy.sh`).
+   `process_active_decisions` workflow (also created by `./scripts/deploy.sh`).
+
+> **Note:** `./scripts/deploy.sh` is the single canonical path for trigger
+> creation. It creates both the `/consensus` shortcut trigger (from
+> `triggers/consensus_command.ts`) and the scheduled trigger idempotently — it
+> skips creation if a trigger with the same name already exists. Do **not** run
+> `slack triggers create --trigger-def triggers/consensus_command.ts` manually;
+> doing so before `./scripts/deploy.sh` will produce a duplicate shortcut entry
+> in Slack autocomplete.
 
 ### Why `./scripts/deploy.sh` is required
 
@@ -73,8 +79,7 @@ re-run the first-time-deploy steps against a different workspace:
 ```bash
 slack create        # in a clean shell; pick the production workspace
 slack deploy
-slack triggers create --trigger-def triggers/consensus_command.ts
-./scripts/deploy.sh
+./scripts/deploy.sh # creates both triggers idempotently
 ```
 
 The Slack CLI keeps per-workspace context in `.slack/`; switching between dev
